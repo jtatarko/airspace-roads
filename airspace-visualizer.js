@@ -41,6 +41,12 @@ export class AirspaceVisualizer {
             showLabels: this.showLabels
         });
         
+        // Debug: Log the color being applied
+        console.log(`Airspace ${airspace.name} (class ${airspace.icaoClass}):`, {
+            fillColor: style.fillColor,
+            outlineColor: style.outlineColor
+        });
+        
         const heights = AirspaceDataProcessor.getAirspaceHeight(airspace);
         
         const positions = airspace.coordinates.map(coord => 
@@ -55,7 +61,7 @@ export class AirspaceVisualizer {
                 height: heights.bottom,
                 extrudedHeight: heights.top,
                 fill: style.fill,
-                fillColor: style.fillColor,
+                material: style.fillColor,
                 outline: style.outline,
                 outlineColor: style.outlineColor,
                 outlineWidth: style.outlineWidth

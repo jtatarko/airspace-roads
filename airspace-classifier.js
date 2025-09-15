@@ -2,12 +2,13 @@ import { Color } from 'cesium';
 
 export class AirspaceClassifier {
     static ICAO_CLASS_COLORS = {
-        1: { name: 'Class A', color: Color.RED, description: 'Most restrictive - IFR only' },
-        2: { name: 'Class B', color: Color.ORANGE, description: 'Terminal radar service area' },
-        3: { name: 'Class C', color: Color.YELLOW, description: 'Terminal radar service' },
-        4: { name: 'Class D', color: Color.GREEN, description: 'Airport traffic area' },
-        5: { name: 'Class E', color: Color.BLUE, description: 'Controlled airspace' },
-        6: { name: 'Class G', color: Color.GRAY, description: 'Uncontrolled airspace' }
+        1: { name: 'Class A', color: Color.fromBytes(255, 0, 0, 255), description: 'Most restrictive - IFR only' },
+        2: { name: 'Class B', color: Color.fromBytes(255, 140, 0, 255), description: 'Terminal radar service area' },
+        3: { name: 'Class C', color: Color.fromBytes(255, 255, 0, 255), description: 'Terminal radar service' },
+        4: { name: 'Class D', color: Color.fromBytes(0, 255, 0, 255), description: 'Airport traffic area' },
+        5: { name: 'Class E', color: Color.fromBytes(0, 0, 255, 255), description: 'Controlled airspace' },
+        6: { name: 'Class G', color: Color.fromBytes(128, 128, 128, 255), description: 'Uncontrolled airspace' },
+        8: { name: 'Special Use', color: Color.fromBytes(255, 0, 255, 255), description: 'Special use airspace' }
     };
     
     static AIRSPACE_TYPES = {
@@ -30,7 +31,7 @@ export class AirspaceClassifier {
     }
     
     static getAirspaceColor(airspace, options = {}) {
-        const { opacity = 0.4, highlighted = false } = options;
+        const { opacity = 0.7, highlighted = false } = options;
         const classification = this.getClassificationInfo(airspace.icaoClass);
         const color = classification.color.clone();
         
@@ -68,7 +69,7 @@ export class AirspaceClassifier {
         
         return {
             fill: true,
-            fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.4 }),
+            fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.7 }),
             outline: true,
             outlineColor: this.getOutlineColor(airspace, { highlighted }),
             outlineWidth: highlighted ? 3 : 1,
