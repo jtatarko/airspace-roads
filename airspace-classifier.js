@@ -31,7 +31,7 @@ export class AirspaceClassifier {
     }
     
     static getAirspaceColor(airspace, options = {}) {
-        const { opacity = 0.7, highlighted = false } = options;
+        const { opacity = 0.3, highlighted = false } = options;
         const classification = this.getClassificationInfo(airspace.icaoClass);
         const color = classification.color.clone();
         
@@ -69,8 +69,8 @@ export class AirspaceClassifier {
         
         return {
             fill: true,
-            fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.7 }),
-            outline: true,
+            fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.3 }),
+            outline: false,
             outlineColor: this.getOutlineColor(airspace, { highlighted }),
             outlineWidth: highlighted ? 3 : 1,
             showLabel: showLabels,

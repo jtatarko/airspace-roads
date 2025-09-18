@@ -10,8 +10,13 @@ export class AirspaceDataProcessor {
         
         let altitudeInMeters;
         if (unit === 1) {
+            // Unit 1: feet
             altitudeInMeters = value * this.FEET_TO_METERS;
+        } else if (unit === 6) {
+            // Unit 6: hundreds of feet (multiply by 100, then convert to meters)
+            altitudeInMeters = value * 100 * this.FEET_TO_METERS;
         } else {
+            // Default: assume meters
             altitudeInMeters = value;
         }
         
