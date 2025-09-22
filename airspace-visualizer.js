@@ -1,4 +1,4 @@
-import { Entity, PolygonGraphics, LabelGraphics, Cartesian3, Color, VerticalOrigin, HorizontalOrigin } from 'cesium';
+import { Entity, PolygonGraphics, LabelGraphics, Cartesian3, Color, VerticalOrigin, HorizontalOrigin, LabelStyle, Cartesian2 } from 'cesium';
 import { AirspaceDataProcessor } from './data-processor.js';
 import { AirspaceClassifier } from './airspace-classifier.js';
 
@@ -72,8 +72,8 @@ export class AirspaceVisualizer {
                 fillColor: style.labelStyle.fillColor,
                 outlineColor: style.labelStyle.outlineColor,
                 outlineWidth: style.labelStyle.outlineWidth,
-                style: style.labelStyle.style,
-                pixelOffset: style.labelStyle.pixelOffset,
+                style: LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cartesian2(style.labelStyle.pixelOffset.x, style.labelStyle.pixelOffset.y),
                 verticalOrigin: VerticalOrigin.BOTTOM,
                 horizontalOrigin: HorizontalOrigin.CENTER,
                 show: true
@@ -117,12 +117,9 @@ export class AirspaceVisualizer {
     
     setShowLabels(show) {
         this.showLabels = show;
-        
-        this.entities.forEach(entity => {
-            if (entity.label) {
-                entity.label.show = show;
-            }
-        });
+
+        // Re-render all airspaces to ensure labels are created/removed properly
+        this.renderAirspaces();
     }
     
     highlightAirspace(airspaceId, highlight = true) {

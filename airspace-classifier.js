@@ -102,11 +102,11 @@ export class AirspaceClassifier {
 
     return {
       fill: true,
-      fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.5 }),
+      fillColor: this.getAirspaceColor(airspace, { highlighted, opacity: 0.1 }),
       outline: true,
       outlineColor: this.getOutlineColor(airspace, {
         highlighted,
-        opacity: 0.3,
+        opacity: 0.1,
       }),
       outlineWidth: highlighted ? 3 : 1,
       showLabel: showLabels,

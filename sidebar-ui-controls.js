@@ -145,6 +145,9 @@ export class SidebarUIControls {
   initializeTabContent() {
     this.createAirspaceTabContent();
     this.createAircraftTabContent();
+
+    // Setup event listeners for the tab content elements
+    this.setupTabEventListeners();
   }
 
   createAirspaceTabContent() {
@@ -313,21 +316,14 @@ export class SidebarUIControls {
         `;
   }
 
-  // Adapter methods to work with existing control systems
-  setAirspaceControls(airspaceControls) {
-    this.airspaceControls = airspaceControls;
-    this.setupAirspaceAdapters();
-  }
+  setupTabEventListeners() {
+    // Setup event listeners for elements created in tab content
 
-  setAircraftControls(aircraftControls) {
-    this.aircraftControls = aircraftControls;
-    this.setupAircraftAdapters();
-  }
-
-  setupAirspaceAdapters() {
-    // Connect altitude slider
+    // Airspace tab listeners
     const altitudeSlider = this.sidebar.querySelector("#sidebarAltitudeSlider");
     const altitudeValue = this.sidebar.querySelector(".altitude-value");
+    const labelToggle = this.sidebar.querySelector("#sidebarShowLabels");
+    const legendToggle = this.sidebar.querySelector("#sidebarLegendToggle");
 
     if (altitudeSlider && altitudeValue) {
       altitudeSlider.addEventListener("input", (e) => {
@@ -343,19 +339,105 @@ export class SidebarUIControls {
       });
     }
 
-    // Connect label toggle
-    const labelToggle = this.sidebar.querySelector("#sidebarShowLabels");
     if (labelToggle) {
       labelToggle.addEventListener("change", (e) => {
+        console.log("Label toggle changed:", e.target.checked);
+        console.log("Airspace visualizer:", this.airspaceVisualizer);
+        console.log("Airspace controls:", this.airspaceControls);
+
         if (this.airspaceControls) {
           this.airspaceControls.showLabels = e.target.checked;
+          console.log(
+            "Updated airspace controls showLabels to:",
+            e.target.checked
+          );
         }
         if (this.airspaceVisualizer) {
+          console.log(
+            "Calling airspaceVisualizer.setShowLabels with:",
+            e.target.checked
+          );
           this.airspaceVisualizer.setShowLabels(e.target.checked);
         }
       });
     }
 
+    if (legendToggle) {
+      legendToggle.addEventListener("click", () => {
+        this.toggleLegend();
+      });
+    }
+
+    // Aircraft tab listeners
+    const startBtn = this.sidebar.querySelector("#sidebarStartTracking");
+    const stopBtn = this.sidebar.querySelector("#sidebarStopTracking");
+    const pauseBtn = this.sidebar.querySelector("#sidebarPauseTracking");
+    const testBtn = this.sidebar.querySelector("#sidebarTestAPI");
+
+    if (startBtn && this.aircraftControls) {
+      startBtn.addEventListener("click", () =>
+        this.aircraftControls.startTracking()
+      );
+    }
+    if (stopBtn && this.aircraftControls) {
+      stopBtn.addEventListener("click", () =>
+        this.aircraftControls.stopTracking()
+      );
+    }
+    if (pauseBtn && this.aircraftControls) {
+      pauseBtn.addEventListener("click", () =>
+        this.aircraftControls.togglePause()
+      );
+    }
+    if (testBtn && this.aircraftControls) {
+      testBtn.addEventListener("click", () => this.aircraftControls.testAPI());
+    }
+
+    // Aircraft display toggles
+    const aircraftLabelsToggle = this.sidebar.querySelector(
+      "#sidebarShowAircraftLabels"
+    );
+    const aircraftTrailsToggle = this.sidebar.querySelector(
+      "#sidebarShowAircraftTrails"
+    );
+
+    if (
+      aircraftLabelsToggle &&
+      this.aircraftTracker &&
+      this.aircraftTracker.visualizer
+    ) {
+      aircraftLabelsToggle.addEventListener("change", (e) => {
+        this.aircraftTracker.visualizer.setShowLabels(e.target.checked);
+      });
+    }
+
+    if (
+      aircraftTrailsToggle &&
+      this.aircraftTracker &&
+      this.aircraftTracker.visualizer
+    ) {
+      aircraftTrailsToggle.addEventListener("change", (e) => {
+        this.aircraftTracker.visualizer.setShowTrails(e.target.checked);
+      });
+    }
+  }
+
+  // Adapter methods to work with existing control systems
+  setAirspaceControls(airspaceControls) {
+    this.airspaceControls = airspaceControls;
+    this.setupAirspaceAdapters();
+    // Re-setup tab event listeners now that we have the controls
+    this.setupTabEventListeners();
+  }
+
+  setAircraftControls(aircraftControls) {
+    this.aircraftControls = aircraftControls;
+    this.setupAircraftAdapters();
+    // Re-setup tab event listeners now that we have the controls
+    this.setupTabEventListeners();
+  }
+
+  setupAirspaceAdapters() {
     // Listen for airspace selection events
     if (
       this.airspaceVisualizer &&
@@ -365,56 +447,12 @@ export class SidebarUIControls {
         this.showAirspaceInfo(airspace);
       });
     }
+
+    // Update initial statistics
+    this.updateAirspaceStats();
   }
 
   setupAircraftAdapters() {
-    // Connect control buttons
-    const startBtn = this.sidebar.querySelector("#sidebarStartTracking");
-    const stopBtn = this.sidebar.querySelector("#sidebarStopTracking");
-    const pauseBtn = this.sidebar.querySelector("#sidebarPauseTracking");
-    const testBtn = this.sidebar.querySelector("#sidebarTestAPI");
-
-    if (this.aircraftControls && startBtn && stopBtn && pauseBtn && testBtn) {
-      startBtn.addEventListener("click", () =>
-        this.aircraftControls.startTracking()
-      );
-      stopBtn.addEventListener("click", () =>
-        this.aircraftControls.stopTracking()
-      );
-      pauseBtn.addEventListener("click", () =>
-        this.aircraftControls.togglePause()
-      );
-      testBtn.addEventListener("click", () => this.aircraftControls.testAPI());
-    }
-
-    // Connect display toggles
-    const labelsToggle = this.sidebar.querySelector(
-      "#sidebarShowAircraftLabels"
-    );
-    const trailsToggle = this.sidebar.querySelector(
-      "#sidebarShowAircraftTrails"
-    );
-
-    if (
-      labelsToggle &&
-      this.aircraftTracker &&
-      this.aircraftTracker.visualizer
-    ) {
-      labelsToggle.addEventListener("change", (e) => {
-        this.aircraftTracker.visualizer.setShowLabels(e.target.checked);
-      });
-    }
-
-    if (
-      trailsToggle &&
-      this.aircraftTracker &&
-      this.aircraftTracker.visualizer
-    ) {
-      trailsToggle.addEventListener("change", (e) => {
-        this.aircraftTracker.visualizer.setShowTrails(e.target.checked);
-      });
-    }
-
     // Listen for aircraft events
     if (this.aircraftTracker) {
       if (typeof this.aircraftTracker.onAircraftUpdate === "function") {
@@ -513,7 +551,9 @@ export class SidebarUIControls {
                     <div class="detail-item">
                         <span class="detail-label">Class:</span>
                         <span class="detail-value">
-                            <span class="detail-class-indicator" style="background-color: ${this.getAirspaceClassColor(airspace.icaoClass)}"></span>
+                            <span class="detail-class-indicator" style="background-color: ${this.getAirspaceClassColor(
+                              airspace.icaoClass
+                            )}"></span>
                             ${this.getAirspaceClassDisplay(airspace.icaoClass)}
                         </span>
                     </div>
@@ -521,8 +561,28 @@ export class SidebarUIControls {
                         <span class="detail-label">Country:</span>
                         <span class="detail-value">${airspace.country}</span>
                     </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Lower Limit:</span>
+                        <span class="detail-value altitude-hover" title="${this.formatAltitudeTooltip(
+                          airspace.lowerAltitude
+                        )}">${this.formatAltitudeLimit(
+        airspace.lowerAltitude,
+        airspace.isLowerAGL
+      )}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Upper Limit:</span>
+                        <span class="detail-value altitude-hover" title="${this.formatAltitudeTooltip(
+                          airspace.upperAltitude
+                        )}">${this.formatAltitudeLimit(
+        airspace.upperAltitude,
+        airspace.isUpperAGL
+      )}</span>
+                    </div>
                     <div class="detail-actions">
-                        <button class="btn outline small" onclick="window.airspaceControls?.focusOnAirspace('${airspace.id}')">
+                        <button class="btn outline small" onclick="window.airspaceControls?.focusOnAirspace('${
+                          airspace.id
+                        }')">
                             Focus
                         </button>
                     </div>
@@ -603,7 +663,6 @@ export class SidebarUIControls {
                     <div class="legend-color" style="background-color: ${item.hexColor}"></div>
                     <div class="legend-text">
                         <div class="legend-name">${item.name}</div>
-                        <div class="legend-description">${item.description}</div>
                     </div>
                 </div>
             `
@@ -707,25 +766,28 @@ export class SidebarUIControls {
         return classInfo.name;
       }
     } catch (error) {
-      console.warn('AirspaceClassifier not available for class mapping:', error);
+      console.warn(
+        "AirspaceClassifier not available for class mapping:",
+        error
+      );
     }
 
     // Fallback mapping for common numeric to letter conversions
     const classMap = {
-      1: 'Class A',
-      2: 'Class B',
-      3: 'Class C',
-      4: 'Class D',
-      5: 'Class E',
-      6: 'Class F',
-      7: 'Class G',
-      'A': 'Class A',
-      'B': 'Class B',
-      'C': 'Class C',
-      'D': 'Class D',
-      'E': 'Class E',
-      'F': 'Class F',
-      'G': 'Class G'
+      1: "Class A",
+      2: "Class B",
+      3: "Class C",
+      4: "Class D",
+      5: "Class E",
+      6: "Class F",
+      7: "Class G",
+      A: "Class A",
+      B: "Class B",
+      C: "Class C",
+      D: "Class D",
+      E: "Class E",
+      F: "Class F",
+      G: "Class G",
     };
 
     return classMap[icaoClass] || `Class ${icaoClass}`;
@@ -741,29 +803,64 @@ export class SidebarUIControls {
         return AirspaceClassifier.colorToHex(classInfo.color);
       }
     } catch (error) {
-      console.warn('AirspaceClassifier not available for color mapping:', error);
+      console.warn(
+        "AirspaceClassifier not available for color mapping:",
+        error
+      );
     }
 
     // Fallback color mapping for common classes (based on AirspaceClassifier mapping)
     const colorMap = {
-      1: '#FF8C00',    // Class B - Orange (255, 140, 0)
-      2: '#FFFF00',    // Class C - Yellow (255, 255, 0)
-      3: '#00FF00',    // Class D - Green (0, 255, 0)
-      4: '#0000FF',    // Class E - Blue (0, 0, 255)
-      5: '#FF00FF',    // Class F - Magenta (255, 0, 255)
-      6: '#808080',    // Class G - Gray (128, 128, 128)
-      7: '#C8C8C8',    // Unknown - Light Gray (200, 200, 200)
-      8: '#FF0000',    // Danger - Red (255, 0, 0)
-      'A': '#FF0000',
-      'B': '#FF8C00',
-      'C': '#FFFF00',
-      'D': '#00FF00',
-      'E': '#0000FF',
-      'F': '#FF00FF',
-      'G': '#808080'
+      1: "#FF8C00", // Class B - Orange (255, 140, 0)
+      2: "#FFFF00", // Class C - Yellow (255, 255, 0)
+      3: "#00FF00", // Class D - Green (0, 255, 0)
+      4: "#0000FF", // Class E - Blue (0, 0, 255)
+      5: "#FF00FF", // Class F - Magenta (255, 0, 255)
+      6: "#808080", // Class G - Gray (128, 128, 128)
+      7: "#C8C8C8", // Unknown - Light Gray (200, 200, 200)
+      8: "#FF0000", // Danger - Red (255, 0, 0)
+      A: "#FF0000",
+      B: "#FF8C00",
+      C: "#FFFF00",
+      D: "#00FF00",
+      E: "#0000FF",
+      F: "#FF00FF",
+      G: "#808080",
     };
 
-    return colorMap[icaoClass] || '#4CAF50'; // Default green if unknown
+    return colorMap[icaoClass] || "#4CAF50"; // Default green if unknown
+  }
+
+  formatAltitudeLimit(altitude, isAGL) {
+    // Format altitude limits in feet (aviation standard)
+    if (altitude === null || altitude === undefined) {
+      return "N/A";
+    }
+
+    // Convert meters to feet (1 meter = 3.28084 feet)
+    const altitudeFeet = Math.round(altitude * 3.28084);
+
+    // Add reference type (AGL = Above Ground Level, MSL = Mean Sea Level)
+    const reference = isAGL ? "AGL" : "MSL";
+
+    return `${altitudeFeet.toLocaleString()}ft ${reference}`;
+  }
+
+  formatAltitudeTooltip(altitude) {
+    // Format tooltip with metric units
+    if (altitude === null || altitude === undefined) {
+      return "No altitude data available";
+    }
+
+    let metricStr;
+    if (altitude >= 1000) {
+      metricStr = `${(altitude / 1000).toFixed(1)}km`;
+    } else {
+      metricStr = `${altitude}m`;
+    }
+
+    const altitudeFeet = Math.round(altitude * 3.28084);
+    return `${altitudeFeet.toLocaleString()}ft (${metricStr})`;
   }
 
   // Hide original controls
