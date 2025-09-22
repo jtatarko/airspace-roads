@@ -6,6 +6,7 @@ import { AirspaceUIControls } from './ui-controls.js';
 import { AircraftTracker } from './aircraft-tracker.js';
 import { AircraftUIControls } from './aircraft-ui-controls.js';
 import { AirspaceViolationDetector } from './airspace-violation-detector.js';
+import { SidebarUIControls } from './sidebar-ui-controls.js';
 
 // (optional but recommended) set your Cesium ion token
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN || "";
@@ -22,6 +23,7 @@ let airspaceControls;
 let aircraftTracker;
 let aircraftControls;
 let violationDetector;
+let sidebarControls;
 
 async function initializeVisualizationSystem() {
   try {
@@ -39,13 +41,24 @@ async function initializeVisualizationSystem() {
     // Create violation detector
     violationDetector = new AirspaceViolationDetector(airspaceVisualizer);
 
-    // Create UI controls
+    // Create legacy UI controls (hidden by default)
     airspaceControls = new AirspaceUIControls(airspaceVisualizer);
     aircraftControls = new AircraftUIControls(aircraftTracker);
+
+    // Create new unified sidebar
+    sidebarControls = new SidebarUIControls(airspaceVisualizer, aircraftTracker);
+
+    // Connect legacy controls to sidebar
+    sidebarControls.setAirspaceControls(airspaceControls);
+    sidebarControls.setAircraftControls(aircraftControls);
+
+    // Hide original controls to avoid duplication
+    sidebarControls.hideOriginalControls();
 
     // Make controls globally available for button callbacks
     window.airspaceControls = airspaceControls;
     window.aircraftControls = aircraftControls;
+    window.sidebarControls = sidebarControls;
 
     // Setup aircraft tracking integration with violation detection
     aircraftTracker.onAircraftUpdate((event) => {
@@ -100,9 +113,10 @@ async function initializeVisualizationSystem() {
 
     // Update statistics
     airspaceControls.updateStats();
+    sidebarControls.updateAirspaceStats();
 
-    // Show aircraft controls
-    aircraftControls.show();
+    // Hide legacy aircraft controls (now handled by sidebar)
+    aircraftControls.hide();
 
     console.log('Visualization system initialized successfully');
 
