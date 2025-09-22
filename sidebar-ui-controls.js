@@ -161,13 +161,13 @@ export class SidebarUIControls {
                 </div>
                 <div class="altitude-control">
                     <div class="altitude-display">
-                        <span class="altitude-value">20.0km</span>
+                        <span class="altitude-value">65,617ft (20.0km)</span>
                     </div>
                     <input type="range" id="sidebarAltitudeSlider"
                            min="0" max="20000" step="100" value="20000" class="altitude-slider">
                     <div class="range-labels">
-                        <span>0m</span>
-                        <span>20km</span>
+                        <span>0ft (0m)</span>
+                        <span>65,617ft (20km)</span>
                     </div>
                 </div>
             </div>
@@ -751,10 +751,14 @@ export class SidebarUIControls {
 
   // Utility methods
   formatAltitudeDisplay(altitude) {
+    // Convert meters to feet (1m = 3.28084ft)
+    const altitudeFeet = Math.round(altitude * 3.28084);
+
     if (altitude >= 1000) {
-      return `${(altitude / 1000).toFixed(1)}km`;
+      const altitudeKm = (altitude / 1000).toFixed(1);
+      return `${altitudeFeet.toLocaleString()}ft (${altitudeKm}km)`;
     }
-    return `${altitude}m`;
+    return `${altitudeFeet.toLocaleString()}ft (${altitude}m)`;
   }
 
   getAirspaceClassDisplay(icaoClass) {
