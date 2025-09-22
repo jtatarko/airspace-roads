@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aircraft Tracking Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: rgba(42, 42, 42, 0.9);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .test-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #45a049;
+        }
+        .test-output {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .error { color: #f44336; }
+        .success { color: #4CAF50; }
+        .warning { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Aircraft Tracking System Test</h1>
+
+        <div class="test-section">
+            <h2>API Service Test</h2>
+            <button class="test-button" onclick="testAPIService()">Test OpenSky API</button>
+            <button class="test-button" onclick="testAPIUsage()">Check API Usage</button>
+            <div id="apiOutput" class="test-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Aircraft Classification Test</h2>
+            <button class="test-button" onclick="testClassification()">Test Aircraft Classification</button>
+            <div id="classificationOutput" class="test-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Data Models Test</h2>
+            <button class="test-button" onclick="testDataModels()">Test Data Models</button>
+            <div id="modelsOutput" class="test-output"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>System Integration</h2>
+            <p>To test the full system:</p>
+            <ol>
+                <li>Go to <a href="/" style="color: #4CAF50;">main application</a></li>
+                <li>Click "Start Tracking" in the Aircraft Tracking panel</li>
+                <li>Monitor the API usage and aircraft display</li>
+                <li>Test filters and aircraft selection</li>
+            </ol>
+        </div>
+    </div>
+
+    <script type="module">
+        import { AircraftAPIService } from './aircraft-api-service.js';
+        import { AircraftClassifier } from './aircraft-classifier.js';
+        import { AircraftState, ProcessedAircraft, AircraftCategories } from './aircraft-types.js';
+
+        window.apiService = new AircraftAPIService();
+
+        window.testAPIService = async function() {
+            const output = document.getElementById('apiOutput');
+            output.innerHTML = '<span class="warning">Testing OpenSky API connection...</span>\n';
+
+            try {
+                const result = await window.apiService.testConnection();
+
+                if (result.success) {
+                    output.innerHTML += `<span class="success">✓ API Connection successful!</span>\n`;
+                    output.innerHTML += `Found ${result.aircraftCount} aircraft\n`;
+                    output.innerHTML += `API Usage: ${result.usageStats.requestsUsed}/${result.usageStats.requestsRemaining + result.usageStats.requestsUsed}\n`;
+                } else {
+                    output.innerHTML += `<span class="error">✗ API Connection failed: ${result.error}</span>\n`;
+                }
+            } catch (error) {
+                output.innerHTML += `<span class="error">✗ Test failed: ${error.message}</span>\n`;
+            }
+        };
+
+        window.testAPIUsage = function() {
+            const output = document.getElementById('apiOutput');
+            const stats = window.apiService.getUsageStats();
+
+            output.innerHTML = `<span class="success">API Usage Statistics:</span>\n`;
+            output.innerHTML += `Requests used: ${stats.requestsUsed}/${stats.dailyLimit}\n`;
+            output.innerHTML += `Requests remaining: ${stats.requestsRemaining}\n`;
+            output.innerHTML += `Daily limit reached: ${stats.dailyLimitReached}\n`;
+            output.innerHTML += `Time until next request: ${Math.ceil(stats.timeUntilNextRequest / 1000)}s\n`;
+            output.innerHTML += `Consecutive errors: ${stats.consecutiveErrors}\n`;
+            output.innerHTML += `Online status: ${stats.isOnline}\n`;
+        };
+
+        window.testClassification = function() {
+            const output = document.getElementById('classificationOutput');
+            output.innerHTML = '<span class="warning">Testing aircraft classification...</span>\n';
+
+            // Create test aircraft data
+            const testAircraft = [
+                // Commercial airliner
+                new AircraftState(['4ca1fa', 'DLH9U   ', 'Germany', 1584533204, 1584533204, 8.5501, 50.0267, 10972.8, false, 249.84, 182.88, -3.25, null, 11582.4, '2157', false, 0]),
+                // General aviation
+                new AircraftState(['a12345', 'N123AB  ', 'United States', 1584533204, 1584533204, 14.5, 46.0, 1500, false, 120, 90, 0, null, 1500, '1200', false, 0]),
+                // Military
+                new AircraftState(['abc123', 'ARMY01  ', 'Slovenia', 1584533204, 1584533204, 14.7, 46.1, 3000, false, 200, 180, 0, null, 3000, '7700', false, 0])
+            ];
+
+            testAircraft.forEach((state, index) => {
+                const category = AircraftClassifier.classifyAircraft(state);
+                const processed = new ProcessedAircraft(state, category);
+
+                output.innerHTML += `<span class="success">Aircraft ${index + 1}:</span>\n`;
+                output.innerHTML += `  Callsign: ${state.callsign || 'Unknown'}\n`;
+                output.innerHTML += `  Classified as: ${category.name}\n`;
+                output.innerHTML += `  Color: ${category.color}\n`;
+                output.innerHTML += `  Icon: ${category.icon}\n`;
+                output.innerHTML += `  Speed: ${processed.getFormattedSpeed()}\n`;
+                output.innerHTML += `  Altitude: ${processed.getFormattedAltitude()}\n`;
+                output.innerHTML += `  Status: ${processed.getStatus()}\n\n`;
+            });
+
+            // Test legend data
+            const legendData = AircraftClassifier.getLegendData();
+            output.innerHTML += `<span class="success">Available categories: ${legendData.length}</span>\n`;
+            legendData.forEach(item => {
+                output.innerHTML += `  ${item.name}: ${item.description}\n`;
+            });
+        };
+
+        window.testDataModels = function() {
+            const output = document.getElementById('modelsOutput');
+            output.innerHTML = '<span class="warning">Testing data models...</span>\n';
+
+            // Test AircraftState
+            const rawData = ['4ca1fa', 'DLH9U   ', 'Germany', 1584533204, 1584533204, 8.5501, 50.0267, 10972.8, false, 249.84, 182.88, -3.25, null, 11582.4, '2157', false, 0];
+            const state = new AircraftState(rawData);
+
+            output.innerHTML += `<span class="success">✓ AircraftState created</span>\n`;
+            output.innerHTML += `  ICAO24: ${state.icao24}\n`;
+            output.innerHTML += `  Callsign: ${state.callsign}\n`;
+            output.innerHTML += `  Valid position: ${state.hasValidPosition()}\n`;
+            output.innerHTML += `  Recent data: ${state.isRecent()}\n`;
+            output.innerHTML += `  Altitude: ${state.getAltitude()}m\n\n`;
+
+            // Test ProcessedAircraft
+            const category = AircraftCategories.COMMERCIAL_AIRLINER;
+            const processed = new ProcessedAircraft(state, category);
+
+            output.innerHTML += `<span class="success">✓ ProcessedAircraft created</span>\n`;
+            output.innerHTML += `  Type: ${processed.aircraftType.name}\n`;
+            output.innerHTML += `  Display color: ${processed.displayColor}\n`;
+            output.innerHTML += `  Trail length: ${processed.trail.length}\n`;
+            output.innerHTML += `  Update count: ${processed.updateCount}\n`;
+            output.innerHTML += `  Active: ${processed.isActive()}\n\n`;
+
+            // Test categories
+            output.innerHTML += `<span class="success">✓ Aircraft Categories (${Object.keys(AircraftCategories).length}):</span>\n`;
+            Object.values(AircraftCategories).forEach(cat => {
+                output.innerHTML += `  ${cat.name} (${cat.id}): ${cat.color}\n`;
+            });
+        };
+
+        // Auto-run basic tests
+        setTimeout(() => {
+            testDataModels();
+            testClassification();
+        }, 1000);
+    </script>
+</body>
+</html>

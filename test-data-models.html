@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Data Models Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        pre {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Data Models Test</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        import { AircraftState, ProcessedAircraft, AircraftCategories } from './aircraft-types.js';
+        import { AircraftClassifier } from './aircraft-classifier.js';
+
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = message;
+            output.appendChild(div);
+        }
+
+        function test(description, testFn) {
+            try {
+                const result = testFn();
+                log(`✓ ${description}`, 'success');
+                if (result) {
+                    log(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
+                }
+                return true;
+            } catch (error) {
+                log(`✗ ${description}: ${error.message}`, 'error');
+                console.error(error);
+                return false;
+            }
+        }
+
+        // Test data - example from OpenSky Network
+        const testRawData = [
+            '4ca1fa',        // icao24
+            'DLH9U   ',      // callsign
+            'Germany',       // origin_country
+            1584533204,      // time_position
+            1584533204,      // last_contact
+            8.5501,          // longitude
+            50.0267,         // latitude
+            10972.8,         // baro_altitude (meters)
+            false,           // on_ground
+            249.84,          // velocity (m/s)
+            182.88,          // true_track (degrees)
+            -3.25,           // vertical_rate (m/s)
+            null,            // sensors
+            11582.4,         // geo_altitude (meters)
+            '2157',          // squawk
+            false,           // spi
+            0                // position_source
+        ];
+
+        log('<h2>Starting Data Models Tests...</h2>');
+
+        // Test 1: AircraftState creation
+        test('Create AircraftState from raw data', () => {
+            const state = new AircraftState(testRawData);
+            return {
+                icao24: state.icao24,
+                callsign: state.callsign,
+                hasValidPosition: state.hasValidPosition(),
+                isRecent: state.isRecent(),
+                altitude: state.getAltitude()
+            };
+        });
+
+        // Test 2: Aircraft classification
+        test('Classify aircraft type', () => {
+            const state = new AircraftState(testRawData);
+            const category = AircraftClassifier.classifyAircraft(state);
+            return {
+                categoryName: category.name,
+                categoryId: category.id,
+                color: category.color,
+                icon: category.icon
+            };
+        });
+
+        // Test 3: ProcessedAircraft creation
+        test('Create ProcessedAircraft', () => {
+            const state = new AircraftState(testRawData);
+            const category = AircraftClassifier.classifyAircraft(state);
+            const processed = new ProcessedAircraft(state, category);
+
+            return {
+                icao24: processed.icao24,
+                callsign: processed.callsign,
+                aircraftType: processed.aircraftType.name,
+                altitudeFeet: processed.altitudeFeet,
+                speedKnots: processed.speedKnots,
+                trailLength: processed.trail.length,
+                status: processed.getStatus(),
+                isActive: processed.isActive()
+            };
+        });
+
+        // Test 4: ProcessedAircraft methods
+        test('Test ProcessedAircraft methods', () => {
+            const state = new AircraftState(testRawData);
+            const processed = new ProcessedAircraft(state);
+
+            return {
+                formattedAltitude: processed.getFormattedAltitude(),
+                formattedSpeed: processed.getFormattedSpeed(),
+                formattedHeading: processed.getFormattedHeading(),
+                timeSinceContact: processed.getTimeSinceContact(),
+                status: processed.getStatus()
+            };
+        });
+
+        // Test 5: Update aircraft state
+        test('Update aircraft state', () => {
+            const state = new AircraftState(testRawData);
+            const processed = new ProcessedAircraft(state);
+
+            // Create updated data (moved position)
+            const updatedData = [...testRawData];
+            updatedData[5] = 8.5600; // new longitude
+            updatedData[6] = 50.0300; // new latitude
+            updatedData[7] = 11000; // new altitude
+
+            const newState = new AircraftState(updatedData);
+            processed.updateState(newState);
+
+            return {
+                updateCount: processed.updateCount,
+                trailLength: processed.trail.length,
+                newLatitude: processed.latitude,
+                newLongitude: processed.longitude,
+                newAltitudeFeet: processed.altitudeFeet
+            };
+        });
+
+        // Test 6: All aircraft categories
+        test('Check all aircraft categories', () => {
+            const categories = Object.values(AircraftCategories);
+            return categories.map(cat => ({
+                id: cat.id,
+                name: cat.name,
+                color: cat.color,
+                icon: cat.icon
+            }));
+        });
+
+        // Test 7: Classifier legend data
+        test('Get classifier legend data', () => {
+            const legendData = AircraftClassifier.getLegendData();
+            return legendData;
+        });
+
+        log('<h2>All tests completed!</h2>', 'success');
+    </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Airspace Classification Test</title>
+    <style>
+        body {
+            margin: 20px;
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+        .warning { color: #ff9800; }
+        pre {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .airspace-preview {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Airspace Classification Test</h1>
+    <div id="output"></div>
+
+    <script type="module">
+        import { AirspaceClassifier } from './airspace-classifier.js';
+
+        const output = document.getElementById('output');
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = message;
+            output.appendChild(div);
+        }
+
+        function test(description, testFn) {
+            try {
+                const result = testFn();
+                log(`✓ ${description}`, 'success');
+                if (result) {
+                    log(`<pre>${JSON.stringify(result, null, 2)}</pre>`);
+                }
+                return true;
+            } catch (error) {
+                log(`✗ ${description}: ${error.message}`, 'error');
+                console.error(error);
+                return false;
+            }
+        }
+
+        log('<h2>Testing New icaoClass-based Classification...</h2>');
+
+        // Test the new classification mapping
+        test('Test icaoClass mapping (1-8)', () => {
+            const results = {};
+            for (let icaoClass = 1; icaoClass <= 8; icaoClass++) {
+                const info = AirspaceClassifier.getClassificationInfo(icaoClass);
+                results[`icaoClass_${icaoClass}`] = {
+                    name: info.name,
+                    description: info.description,
+                    hasColor: !!info.color
+                };
+            }
+            return results;
+        });
+
+        // Test specific examples mentioned by user
+        test('Test CTR LJPZ (should be Class D from icaoClass: 3)', () => {
+            const mockAirspace = {
+                name: 'CTR LJPZ',
+                icaoClass: 3,
+                type: 4  // This should be ignored now
+            };
+
+            const classification = AirspaceClassifier.getClassificationInfo(mockAirspace.icaoClass);
+            const color = AirspaceClassifier.getAirspaceColor(mockAirspace);
+
+            return {
+                airspaceName: mockAirspace.name,
+                icaoClass: mockAirspace.icaoClass,
+                classificationName: classification.name,
+                description: classification.description,
+                expectedClass: 'Class D',
+                correct: classification.name === 'Class D'
+            };
+        });
+
+        test('Test TMA DOLSKO 1 (should be Class E from icaoClass: 4)', () => {
+            const mockAirspace = {
+                name: 'TMA DOLSKO 1',
+                icaoClass: 4,
+                type: 7  // This should be ignored now
+            };
+
+            const classification = AirspaceClassifier.getClassificationInfo(mockAirspace.icaoClass);
+            const color = AirspaceClassifier.getAirspaceColor(mockAirspace);
+
+            return {
+                airspaceName: mockAirspace.name,
+                icaoClass: mockAirspace.icaoClass,
+                classificationName: classification.name,
+                description: classification.description,
+                expectedClass: 'Class E',
+                correct: classification.name === 'Class E'
+            };
+        });
+
+        test('Test TMZ LJLJ (classification depends on its icaoClass)', () => {
+            // Test different possible icaoClass values for TMZ
+            const tmzTests = [];
+            for (let icaoClass = 1; icaoClass <= 8; icaoClass++) {
+                const mockAirspace = {
+                    name: 'TMZ LJLJ',
+                    icaoClass: icaoClass
+                };
+
+                const classification = AirspaceClassifier.getClassificationInfo(mockAirspace.icaoClass);
+                tmzTests.push({
+                    icaoClass: icaoClass,
+                    classificationName: classification.name,
+                    description: classification.description
+                });
+            }
+            return tmzTests;
+        });
+
+        // Test danger areas
+        test('Test Danger Area (should use icaoClass: 8)', () => {
+            const mockAirspace = {
+                name: 'DANGER AREA 1',
+                icaoClass: 8
+            };
+
+            const classification = AirspaceClassifier.getClassificationInfo(mockAirspace.icaoClass);
+
+            return {
+                airspaceName: mockAirspace.name,
+                icaoClass: mockAirspace.icaoClass,
+                classificationName: classification.name,
+                description: classification.description,
+                expectedClass: 'Danger',
+                correct: classification.name === 'Danger'
+            };
+        });
+
+        // Visual color test
+        test('Generate visual color preview', () => {
+            const colorPreview = document.createElement('div');
+            colorPreview.innerHTML = '<h3>Airspace Color Preview:</h3>';
+
+            for (let icaoClass = 1; icaoClass <= 8; icaoClass++) {
+                const info = AirspaceClassifier.getClassificationInfo(icaoClass);
+                const mockAirspace = { icaoClass: icaoClass };
+                const color = AirspaceClassifier.getAirspaceColor(mockAirspace, { opacity: 0.8 });
+
+                const preview = document.createElement('div');
+                preview.className = 'airspace-preview';
+                preview.style.backgroundColor = `rgba(${color.red * 255}, ${color.green * 255}, ${color.blue * 255}, ${color.alpha})`;
+                preview.style.border = '1px solid #ccc';
+                preview.textContent = `${info.name} (${icaoClass})`;
+
+                colorPreview.appendChild(preview);
+            }
+
+            log(colorPreview.outerHTML);
+            return 'Color preview generated above';
+        });
+
+        log('<h2>All classification tests completed!</h2>', 'success');
+
+        // Test that would verify the actual data from the GeoJSON
+        log('<h3>To test with real data:</h3>', 'warning');
+        log('1. Load the main application at <a href="/" style="color: #4CAF50;">http://localhost:5173/</a>');
+        log('2. Check console for airspace loading messages');
+        log('3. Verify that CTR LJPZ shows as Class D (blue)');
+        log('4. Verify that TMA DOLSKO 1 shows as Class E (purple)');
+        log('5. Check the legend panel for correct color coding');
+    </script>
+</body>
+</html>

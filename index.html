@@ -226,6 +226,214 @@
             color: #4CAF50;
         }
 
+        /* Aircraft Control Styles */
+        .aircraft-main-control .control-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .aircraft-main-control .control-section:last-child {
+            border-bottom: none;
+        }
+
+        .aircraft-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        .action-btn.primary {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .action-btn.primary:hover:not(:disabled) {
+            background: #45a049;
+        }
+
+        .action-btn.secondary {
+            background: #757575;
+            color: white;
+        }
+
+        .action-btn.secondary:hover:not(:disabled) {
+            background: #616161;
+        }
+
+        .action-btn:disabled {
+            background: #424242;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .control-label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .control-label input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .control-select {
+            width: 100%;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .control-select option {
+            background: #2a2a2a;
+            color: white;
+        }
+
+        /* Aircraft Status Panel */
+        .aircraft-status .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+
+        .status-value.running { color: #4CAF50; }
+        .status-value.stopped { color: #f44336; }
+        .status-value.paused { color: #ff9800; }
+        .status-value.error { color: #f44336; }
+        .status-value.warning { color: #ff9800; }
+
+        /* Aircraft Filter Panel */
+        .filter-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-section:last-child {
+            border-bottom: none;
+        }
+
+        .filter-section label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+
+        .type-filters {
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .type-filter {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .type-filter input[type="checkbox"] {
+            margin-right: 6px;
+        }
+
+        .type-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .range-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .range-inputs input {
+            flex: 1;
+            padding: 4px 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            color: white;
+            font-size: 11px;
+            width: 70px;
+        }
+
+        .range-inputs span {
+            color: #ccc;
+            font-size: 11px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        /* Aircraft Info Panel */
+        .aircraft-details h4 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+
+        .aircraft-details .detail-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .aircraft-details .detail-section:last-child {
+            border-bottom: none;
+        }
+
+        /* Toggle buttons */
+        .toggle-aircraft,
+        .toggle-filters {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .toggle-aircraft:hover,
+        .toggle-filters:hover {
+            opacity: 1;
+        }
+
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .airspace-control {
@@ -247,6 +455,25 @@
                 left: 10px;
                 transform: none;
                 width: calc(100% - 20px);
+            }
+
+            /* Stack aircraft controls vertically on mobile */
+            .aircraft-main-control,
+            .aircraft-status,
+            .aircraft-filters {
+                position: relative;
+                top: auto;
+                left: auto;
+                transform: none;
+                margin-bottom: 10px;
+            }
+
+            .aircraft-actions {
+                flex-direction: column;
+            }
+
+            .action-btn {
+                min-width: auto;
             }
         }
     </style>
