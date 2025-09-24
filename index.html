@@ -84,7 +84,7 @@
         /* Label Toggle */
         .label-toggle {
             top: 140px;
-            right: 10px;
+            right: 8px;
             width: 150px;
         }
 
@@ -434,7 +434,7 @@
             position: fixed;
             top: 8px;
             left: 8px;
-            width: 350px;
+            width: 300px;
             height: 80vh;
             background: rgba(18, 18, 18, 0.8);
             backdrop-filter: blur(10px);
@@ -491,8 +491,8 @@
         }
 
         .tab-button.active {
-            background: #4CAF50;
-            border-color: #45a049;
+            background: #191919;
+            border-color: #191919;
             color: white;
         }
 
@@ -539,7 +539,7 @@
         .control-section {
             margin-bottom: 24px;
             padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .control-section:last-child {
@@ -555,7 +555,7 @@
             margin: 0;
             font-size: 14px;
             font-weight: 600;
-            color: #4CAF50;
+            color: #e7e7e7;
         }
 
         .altitude-control {
@@ -612,7 +612,7 @@
         .checkbox-control {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             cursor: pointer;
             margin-bottom: 8px;
             padding: 4px;
@@ -624,9 +624,52 @@
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .checkbox-control input[type="checkbox"] {
+        /* Custom Checkbox Styling */
+        .checkbox-control input[type="checkbox"],
+        .label-toggle input[type="checkbox"],
+        .control-label input[type="checkbox"],
+        .type-filter input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+            background: transparent;
+            cursor: pointer;
+            position: relative;
             margin: 0;
-            transform: scale(1.2);
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-control input[type="checkbox"]:hover,
+        .label-toggle input[type="checkbox"]:hover,
+        .control-label input[type="checkbox"]:hover,
+        .type-filter input[type="checkbox"]:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .checkbox-control input[type="checkbox"]:checked,
+        .label-toggle input[type="checkbox"]:checked,
+        .control-label input[type="checkbox"]:checked,
+        .type-filter input[type="checkbox"]:checked {
+            background-color: #45a049;
+            border-color: #45a049;
+        }
+
+        .checkbox-control input[type="checkbox"]:checked::after,
+        .label-toggle input[type="checkbox"]:checked::after,
+        .control-label input[type="checkbox"]:checked::after,
+        .type-filter input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 2px;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1;
         }
 
         .label-text {

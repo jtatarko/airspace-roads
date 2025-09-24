@@ -3,32 +3,32 @@ import { Color } from "cesium";
 export class AirspaceClassifier {
   static ICAO_CLASS_COLORS = {
     1: {
-      name: "Class B",
+      name: "B",
       color: Color.fromBytes(255, 140, 0, 255),
       description: "Terminal radar service area",
     }, // Orange
     2: {
-      name: "Class C",
+      name: "C",
       color: Color.fromBytes(255, 255, 0, 255),
       description: "Terminal radar service",
     }, // Yellow
     3: {
-      name: "Class D",
+      name: "D",
       color: Color.fromBytes(0, 255, 0, 255),
       description: "Airport traffic area",
     }, // Green
     4: {
-      name: "Class E",
+      name: "E",
       color: Color.fromBytes(0, 0, 255, 255),
       description: "Controlled airspace",
     }, // Blue
     5: {
-      name: "Class F",
+      name: "F",
       color: Color.fromBytes(255, 0, 255, 255),
       description: "Advisory airspace",
     }, // Magenta
     6: {
-      name: "Class G",
+      name: "G",
       color: Color.fromBytes(128, 128, 128, 255),
       description: "Uncontrolled airspace",
     }, // Gray

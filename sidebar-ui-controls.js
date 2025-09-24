@@ -40,11 +40,9 @@ export class SidebarUIControls {
             <div class="sidebar-header">
                 <div class="sidebar-tabs">
                     <button class="tab-button active" data-tab="airspace">
-                        <span class="tab-icon">🗺️</span>
                         <span class="tab-label">Airspace</span>
                     </button>
                     <button class="tab-button" data-tab="aircraft">
-                        <span class="tab-icon">✈️</span>
                         <span class="tab-label">Aircrafts Tracking</span>
                     </button>
                 </div>
@@ -544,10 +542,6 @@ export class SidebarUIControls {
                     <button class="close-details">✕</button>
                 </div>
                 <div class="detail-content">
-                    <div class="detail-item">
-                        <span class="detail-label">Type:</span>
-                        <span class="detail-value">${airspace.type}</span>
-                    </div>
                     <div class="detail-item">
                         <span class="detail-label">Class:</span>
                         <span class="detail-value">
