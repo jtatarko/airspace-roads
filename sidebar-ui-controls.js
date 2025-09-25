@@ -2,6 +2,7 @@
 // Unified tabbed sidebar for airspace and aircraft controls
 
 import { AirspaceClassifier } from "./airspace-classifier.js";
+import { AircraftConfig } from "./aircraft-types.js";
 
 export class SidebarUIControls {
   constructor(airspaceVisualizer, aircraftTracker) {
@@ -23,6 +24,9 @@ export class SidebarUIControls {
     this.tabContainer = null;
     this.contentContainer = null;
 
+    // Real-time update timer
+    this.realTimeUpdateTimer = null;
+
     this.initialize();
   }
 
@@ -30,6 +34,12 @@ export class SidebarUIControls {
     this.createSidebar();
     this.setupEventListeners();
     this.initializeTabContent();
+    this.startRealTimeUpdates();
+
+    // Defer aircraft adapter setup to ensure tracker is fully initialized
+    setTimeout(() => {
+      this.setupAircraftAdapters();
+    }, 100);
   }
 
   createSidebar() {
@@ -196,9 +206,9 @@ export class SidebarUIControls {
             <div class="control-section">
                 <div class="section-header">
                     <h4>Airspace Classes</h4>
-                    <button class="legend-toggle" id="sidebarLegendToggle">▼</button>
+                    <button class="legend-toggle" id="sidebarLegendToggle">▶</button>
                 </div>
-                <div class="legend-content" id="sidebarLegendContent">
+                <div class="legend-content" id="sidebarLegendContent" style="display: none;">
                     ${this.generateLegendHTML()}
                 </div>
             </div>
@@ -231,19 +241,14 @@ export class SidebarUIControls {
                     <h4>Tracking Control</h4>
                 </div>
                 <div class="action-buttons">
-                    <button id="sidebarStartTracking" class="btn primary">Start Tracking</button>
+                    <button id="sidebarStartTracking" class="btn primary">Start</button>
                     <button id="sidebarStopTracking" class="btn secondary" disabled>Stop</button>
                     <button id="sidebarPauseTracking" class="btn secondary" disabled>Pause</button>
                 </div>
-                <div class="action-buttons secondary-row">
-                    <button id="sidebarTestAPI" class="btn outline">Test API</button>
-                </div>
+
             </div>
 
             <div class="control-section">
-                <div class="section-header">
-                    <h4>Connection Status</h4>
-                </div>
                 <div class="status-grid">
                     <div class="status-item">
                         <span class="status-label">Status</span>
@@ -265,7 +270,9 @@ export class SidebarUIControls {
                     <h4>Display Options</h4>
                 </div>
                 <label class="checkbox-control">
-                    <input type="checkbox" id="sidebarShowAircraftLabels">
+                    <input type="checkbox" id="sidebarShowAircraftLabels" ${
+                      AircraftConfig.showLabels ? "checked" : ""
+                    }>
                     <span class="checkmark"></span>
                     <span class="label-text">Show Aircraft Labels</span>
                 </label>
@@ -277,6 +284,18 @@ export class SidebarUIControls {
             </div>
 
             <div class="control-section">
+                <div class="section-header">
+                    <h4>Aircraft Information</h4>
+                </div>
+                <div class="info-placeholder">
+                    <p>Click on an aircraft to see detailed information</p>
+                </div>
+                <div class="aircraft-details" id="sidebarAircraftDetails" style="display: none;">
+                    <!-- Aircraft details will be populated here -->
+                </div>
+            </div>
+
+                        <div class="control-section">
                 <div class="section-header">
                     <h4>Aircraft Statistics</h4>
                 </div>
@@ -297,18 +316,6 @@ export class SidebarUIControls {
                         <span class="stat-label">On Ground</span>
                         <span class="stat-value" id="sidebarOnGroundAircraft">0</span>
                     </div>
-                </div>
-            </div>
-
-            <div class="control-section">
-                <div class="section-header">
-                    <h4>Aircraft Information</h4>
-                </div>
-                <div class="info-placeholder">
-                    <p>Click on an aircraft to see detailed information</p>
-                </div>
-                <div class="aircraft-details" id="sidebarAircraftDetails" style="display: none;">
-                    <!-- Aircraft details will be populated here -->
                 </div>
             </div>
         `;
@@ -372,23 +379,28 @@ export class SidebarUIControls {
     const pauseBtn = this.sidebar.querySelector("#sidebarPauseTracking");
     const testBtn = this.sidebar.querySelector("#sidebarTestAPI");
 
-    if (startBtn && this.aircraftControls) {
-      startBtn.addEventListener("click", () =>
-        this.aircraftControls.startTracking()
-      );
+    if (startBtn && this.aircraftTracker) {
+      startBtn.addEventListener("click", () => this.aircraftTracker.start());
     }
-    if (stopBtn && this.aircraftControls) {
-      stopBtn.addEventListener("click", () =>
-        this.aircraftControls.stopTracking()
-      );
+    if (stopBtn && this.aircraftTracker) {
+      stopBtn.addEventListener("click", () => this.aircraftTracker.stop());
     }
-    if (pauseBtn && this.aircraftControls) {
-      pauseBtn.addEventListener("click", () =>
-        this.aircraftControls.togglePause()
-      );
+    if (pauseBtn && this.aircraftTracker) {
+      pauseBtn.addEventListener("click", () => {
+        const stats = this.aircraftTracker.getStatistics();
+        if (stats.tracking.isPaused) {
+          this.aircraftTracker.resume();
+          pauseBtn.textContent = "Pause";
+        } else {
+          this.aircraftTracker.pause();
+          pauseBtn.textContent = "Resume";
+        }
+      });
     }
-    if (testBtn && this.aircraftControls) {
-      testBtn.addEventListener("click", () => this.aircraftControls.testAPI());
+    if (testBtn && this.aircraftTracker) {
+      testBtn.addEventListener("click", () =>
+        this.aircraftTracker.testAPIConnection()
+      );
     }
 
     // Aircraft display toggles
@@ -451,16 +463,22 @@ export class SidebarUIControls {
   }
 
   setupAircraftAdapters() {
+    console.log('Setting up aircraft adapters, tracker available:', !!this.aircraftTracker);
     // Listen for aircraft events
     if (this.aircraftTracker) {
       if (typeof this.aircraftTracker.onAircraftUpdate === "function") {
+        console.log('Registering aircraft update handler');
         this.aircraftTracker.onAircraftUpdate((event) => {
+          console.log('Aircraft event received:', event.type, event);
           if (event.type === "data_updated") {
             this.updateAircraftStats(event.stats);
           } else if (event.type === "aircraft_selected") {
+            console.log('Aircraft selected event, calling showAircraftInfo');
             this.showAircraftInfo(event.aircraft);
           }
         });
+      } else {
+        console.log('aircraftTracker.onAircraftUpdate is not a function');
       }
 
       if (typeof this.aircraftTracker.onStatusChange === "function") {
@@ -505,6 +523,22 @@ export class SidebarUIControls {
       statusElement.textContent =
         status.status.charAt(0).toUpperCase() + status.status.slice(1);
       statusElement.className = `status-value ${status.status}`;
+    }
+
+    // Update button states based on tracking status
+    const startBtn = this.sidebar.querySelector("#sidebarStartTracking");
+    const stopBtn = this.sidebar.querySelector("#sidebarStopTracking");
+    const pauseBtn = this.sidebar.querySelector("#sidebarPauseTracking");
+
+    if (startBtn && stopBtn && pauseBtn) {
+      const isRunning = status.status === "running";
+      const isPaused = status.status === "paused";
+      const isStopped = status.status === "stopped";
+
+      startBtn.disabled = isRunning || isPaused;
+      stopBtn.disabled = isStopped;
+      pauseBtn.disabled = isStopped;
+      pauseBtn.textContent = isPaused ? "Resume" : "Pause";
     }
 
     // Update API usage
@@ -593,6 +627,7 @@ export class SidebarUIControls {
   }
 
   showAircraftInfo(aircraft) {
+    console.log('Showing aircraft info for:', aircraft);
     const placeholder = this.sidebar.querySelector(".info-placeholder");
     const details = this.sidebar.querySelector("#sidebarAircraftDetails");
 
@@ -601,29 +636,37 @@ export class SidebarUIControls {
       details.style.display = "block";
       details.innerHTML = `
                 <div class="detail-header">
-                    <h5>${aircraft.callsign || aircraft.icao24}</h5>
+                    <h5>${aircraft.callsign || aircraft.icao24 || 'Unknown'}</h5>
                     <button class="close-details">✕</button>
                 </div>
                 <div class="detail-content">
                     <div class="detail-item">
+                        <span class="detail-label">ICAO24:</span>
+                        <span class="detail-value">${aircraft.icao24 || 'Unknown'}</span>
+                    </div>
+                    <div class="detail-item">
                         <span class="detail-label">Type:</span>
                         <span class="detail-value">${
-                          aircraft.aircraftType.name
+                          aircraft.aircraftType?.name || 'Unknown'
                         }</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Country:</span>
                         <span class="detail-value">${
-                          aircraft.originCountry
+                          aircraft.originCountry || 'Unknown'
                         }</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Altitude:</span>
-                        <span class="detail-value">${aircraft.getFormattedAltitude()}</span>
+                        <span class="detail-value">${aircraft.getFormattedAltitude?.() || 'Unknown'}</span>
                     </div>
                     <div class="detail-item">
                         <span class="detail-label">Speed:</span>
-                        <span class="detail-value">${aircraft.getFormattedSpeed()}</span>
+                        <span class="detail-value">${aircraft.getFormattedSpeed?.() || 'Unknown'}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Heading:</span>
+                        <span class="detail-value">${aircraft.getFormattedHeading?.() || 'Unknown'}</span>
                     </div>
                     <div class="detail-actions">
                         <button class="btn outline small" onclick="window.aircraftControls?.focusOnAircraft('${
@@ -740,6 +783,36 @@ export class SidebarUIControls {
         content.style.display = "none";
         button.textContent = "▶";
       }
+    }
+  }
+
+  // Real-time update methods
+  startRealTimeUpdates() {
+    // Update API usage and timing info every second
+    this.realTimeUpdateTimer = setInterval(() => {
+      this.updateRealTimeStats();
+    }, 1000);
+  }
+
+  updateRealTimeStats() {
+    if (this.aircraftTracker) {
+      const stats = this.aircraftTracker.getStatistics();
+      if (stats.tracking) {
+        this.updateAircraftStatus({
+          status: stats.tracking.isPaused
+            ? "paused"
+            : stats.tracking.isRunning
+            ? "running"
+            : "stopped",
+        });
+      }
+    }
+  }
+
+  stopRealTimeUpdates() {
+    if (this.realTimeUpdateTimer) {
+      clearInterval(this.realTimeUpdateTimer);
+      this.realTimeUpdateTimer = null;
     }
   }
 

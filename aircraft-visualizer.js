@@ -13,11 +13,14 @@ import {
     HeightReference,
     ClassificationType,
     DistanceDisplayCondition,
-    Transforms
+    Transforms,
+    ScreenSpaceEventHandler,
+    ScreenSpaceEventType
 } from 'cesium';
 
 import { AircraftClassifier } from './aircraft-classifier.js';
 import { ProcessedAircraft, AircraftConfig } from './aircraft-types.js';
+import { aircraftIconManager } from './aircraft-icon-manager.js';
 
 /**
  * Aircraft visualization system for Cesium viewer
@@ -51,6 +54,12 @@ export class AircraftVisualizer {
         this.renderCount = 0;
         this.lastRenderTime = 0;
 
+        // Set up Cesium click handlers
+        this.setupClickHandlers();
+
+        // Initialize icon manager
+        this.initializeIconManager();
+
         console.log('Aircraft Visualizer initialized');
     }
 
@@ -58,7 +67,7 @@ export class AircraftVisualizer {
      * Add or update aircraft in the visualization
      * @param {ProcessedAircraft[]} aircraftList - Array of processed aircraft
      */
-    updateAircraft(aircraftList) {
+    async updateAircraft(aircraftList) {
         const startTime = performance.now();
         let added = 0, updated = 0, removed = 0;
 
@@ -74,18 +83,22 @@ export class AircraftVisualizer {
             }
         }
 
-        // Add or update aircraft
+        // Add or update aircraft (process all operations in parallel for better performance)
+        const updatePromises = [];
         for (const aircraft of aircraftList) {
             const existing = this.aircraft.get(aircraft.icao24);
 
             if (existing) {
-                this.updateAircraftEntity(aircraft);
+                updatePromises.push(this.updateAircraftEntity(aircraft));
                 updated++;
             } else {
-                this.addAircraft(aircraft);
+                updatePromises.push(this.addAircraft(aircraft));
                 added++;
             }
         }
+
+        // Wait for all operations to complete
+        await Promise.all(updatePromises);
 
         // Update render stats
         this.renderCount++;
@@ -98,15 +111,15 @@ export class AircraftVisualizer {
      * Add new aircraft to visualization
      * @param {ProcessedAircraft} aircraft - Processed aircraft data
      */
-    addAircraft(aircraft) {
+    async addAircraft(aircraft) {
         if (!this.shouldShowAircraft(aircraft)) {
             return;
         }
 
         this.aircraft.set(aircraft.icao24, aircraft);
 
-        // Create main aircraft entity
-        const entity = this.createAircraftEntity(aircraft);
+        // Create main aircraft entity asynchronously
+        const entity = await this.createAircraftEntity(aircraft);
         this.viewer.entities.add(entity);
         this.entities.set(aircraft.icao24, entity);
 
@@ -145,7 +158,7 @@ export class AircraftVisualizer {
      * Update existing aircraft entity
      * @param {ProcessedAircraft} aircraft - Updated aircraft data
      */
-    updateAircraftEntity(aircraft) {
+    async updateAircraftEntity(aircraft) {
         if (!this.shouldShowAircraft(aircraft)) {
             this.removeAircraft(aircraft.icao24);
             return;
@@ -153,7 +166,7 @@ export class AircraftVisualizer {
 
         const entity = this.entities.get(aircraft.icao24);
         if (!entity) {
-            this.addAircraft(aircraft);
+            await this.addAircraft(aircraft);
             return;
         }
 
@@ -194,9 +207,9 @@ export class AircraftVisualizer {
     /**
      * Create Cesium entity for aircraft
      * @param {ProcessedAircraft} aircraft - Aircraft data
-     * @returns {Entity} Cesium entity
+     * @returns {Promise<Entity>} Cesium entity
      */
-    createAircraftEntity(aircraft) {
+    async createAircraftEntity(aircraft) {
         const position = Cartesian3.fromDegrees(
             aircraft.longitude,
             aircraft.latitude,
@@ -210,14 +223,18 @@ export class AircraftVisualizer {
             lod: this.determineLOD(aircraft)
         });
 
+        // Create aircraft icon asynchronously
+        const iconImage = await this.createAircraftIcon(aircraft);
+
         const entity = new Entity({
             id: `aircraft_${aircraft.icao24}`,
             name: aircraft.callsign || aircraft.icao24,
             position: position,
+            icao24: aircraft.icao24, // Add icao24 property for click identification
 
             // Billboard for aircraft icon
             billboard: new BillboardGraphics({
-                image: this.createAircraftIcon(aircraft),
+                image: iconImage,
                 show: true,
                 pixelSize: style.size,
                 color: style.fillColor,
@@ -340,11 +357,44 @@ export class AircraftVisualizer {
     }
 
     /**
-     * Create aircraft icon (simple colored circle for now)
+     * Initialize icon manager and preload icons
+     */
+    async initializeIconManager() {
+        try {
+            await aircraftIconManager.preloadIcons();
+            console.log('Aircraft icons preloaded successfully');
+        } catch (error) {
+            console.error('Failed to initialize aircraft icons:', error);
+        }
+    }
+
+    /**
+     * Create aircraft icon using SVG system
+     * @param {ProcessedAircraft} aircraft - Aircraft data
+     * @returns {Promise<string>} SVG data URL
+     */
+    async createAircraftIcon(aircraft) {
+        try {
+            const iconUrl = await aircraftIconManager.getAircraftIcon(aircraft, {
+                color: aircraft.aircraftType.color,
+                size: 32,
+                rotation: aircraft.trueTrack || 0
+            });
+
+            return iconUrl;
+        } catch (error) {
+            console.error('Error creating aircraft icon:', error);
+            // Fallback to simple canvas icon
+            return this.createFallbackIcon(aircraft);
+        }
+    }
+
+    /**
+     * Create fallback canvas icon if SVG fails
      * @param {ProcessedAircraft} aircraft - Aircraft data
      * @returns {string} Canvas data URL
      */
-    createAircraftIcon(aircraft) {
+    createFallbackIcon(aircraft) {
         const canvas = document.createElement('canvas');
         canvas.width = 32;
         canvas.height = 32;
@@ -603,6 +653,43 @@ export class AircraftVisualizer {
 
         this.viewer.zoomTo(entity);
         this.selectAircraft(icao24, true);
+    }
+
+    /**
+     * Set up Cesium click and hover handlers
+     */
+    setupClickHandlers() {
+        // Create screen space event handler for clicks
+        this.clickHandler = new ScreenSpaceEventHandler(this.viewer.scene.canvas);
+
+        // Handle left clicks
+        this.clickHandler.setInputAction((event) => {
+            console.log('Click detected, checking for aircraft at position');
+            const pickedObject = this.viewer.scene.pick(event.position);
+            if (pickedObject && pickedObject.id) {
+                const entity = pickedObject.id;
+                // Check if this is an aircraft entity (has icao24 property)
+                if (entity.icao24) {
+                    console.log('Aircraft entity clicked:', entity.icao24);
+                    const aircraft = this.aircraft.get(entity.icao24);
+                    if (aircraft && this.eventHandlers.onAircraftClick) {
+                        console.log('Calling onAircraftClick handler');
+                        this.eventHandlers.onAircraftClick(aircraft, event.position);
+                    }
+                }
+            }
+        }, ScreenSpaceEventType.LEFT_CLICK);
+
+        // Handle mouse move for hover (optional)
+        this.clickHandler.setInputAction((event) => {
+            const pickedObject = this.viewer.scene.pick(event.endPosition);
+            if (pickedObject && pickedObject.id && pickedObject.id.icao24) {
+                const aircraft = this.aircraft.get(pickedObject.id.icao24);
+                if (aircraft && this.eventHandlers.onAircraftHover) {
+                    this.eventHandlers.onAircraftHover(aircraft, event.endPosition);
+                }
+            }
+        }, ScreenSpaceEventType.MOUSE_MOVE);
     }
 
     /**
