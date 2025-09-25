@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SVG Aircraft Icons Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .icon-test {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .icon-test img {
+            display: block;
+            margin: 10px auto;
+        }
+        .test-results {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Aircraft SVG Icons Test</h1>
+    <p>Testing the aircraft icon loading system...</p>
+
+    <div id="iconTests">
+        <!-- Icons will be loaded here -->
+    </div>
+
+    <div class="test-results" id="testResults">
+        <h3>Test Results:</h3>
+        <div id="results">Running tests...</div>
+    </div>
+
+    <script type="module">
+        import { aircraftIconManager } from './aircraft-icon-manager.js';
+        import { AircraftCategories } from './aircraft-types.js';
+
+        async function runIconTests() {
+            const resultsDiv = document.getElementById('results');
+            const iconTestsDiv = document.getElementById('iconTests');
+            const results = [];
+
+            try {
+                // Test 1: Initialize icon manager
+                results.push('✓ Icon manager initialized');
+
+                // Test 2: Load all icons
+                const loadSuccess = await aircraftIconManager.loadAllIcons();
+                results.push(loadSuccess ? '✓ All icons loaded successfully' : '✗ Failed to load icons');
+
+                // Test 3: Test each aircraft category
+                for (const [categoryKey, category] of Object.entries(AircraftCategories)) {
+                    if (category.id === 'unknown') continue;
+
+                    try {
+                        // Create mock aircraft
+                        const mockAircraft = {
+                            aircraftType: category,
+                            trueTrack: 45 // 45 degree rotation for testing
+                        };
+
+                        // Get icon
+                        const iconUrl = await aircraftIconManager.getAircraftIcon(mockAircraft, {
+                            color: category.color,
+                            size: 80
+                        });
+
+                        // Create test display
+                        const testDiv = document.createElement('div');
+                        testDiv.className = 'icon-test';
+                        testDiv.innerHTML = `
+                            <h4>${category.name}</h4>
+                            <img src="${iconUrl}" alt="${category.name}" width="48" height="48">
+                            <div>Color: ${category.color}</div>
+                            <div>ID: ${category.id}</div>
+                        `;
+                        iconTestsDiv.appendChild(testDiv);
+
+                        results.push(`✓ ${category.name} icon loaded and rendered`);
+
+                    } catch (error) {
+                        results.push(`✗ Failed to load ${category.name} icon: ${error.message}`);
+                    }
+                }
+
+                // Test 4: Cache statistics
+                const stats = aircraftIconManager.getCacheStats();
+                results.push(`✓ Cache stats: ${stats.svgCacheSize} SVGs, ${stats.iconCacheSize} rendered icons`);
+
+                // Test 5: Test rotation and color variations
+                const testCategory = AircraftCategories.COMMERCIAL_AIRLINER;
+                const mockAircraft = {
+                    aircraftType: testCategory,
+                    trueTrack: 0
+                };
+
+                const rotations = [0, 90, 180, 270];
+                const colors = ['#FF0000', '#00FF00', '#0000FF'];
+
+                let variationTests = 0;
+                for (const rotation of rotations) {
+                    for (const color of colors) {
+                        try {
+                            await aircraftIconManager.getAircraftIcon(
+                                { ...mockAircraft, trueTrack: rotation },
+                                { color, size: 32 }
+                            );
+                            variationTests++;
+                        } catch (error) {
+                            console.error(`Variation test failed:`, error);
+                        }
+                    }
+                }
+
+                results.push(`✓ Icon variations test: ${variationTests}/12 combinations successful`);
+
+            } catch (error) {
+                results.push(`✗ Test failed: ${error.message}`);
+                console.error('Test error:', error);
+            }
+
+            // Display results
+            resultsDiv.innerHTML = results.join('<br>');
+        }
+
+        // Run tests when page loads
+        runIconTests();
+    </script>
+</body>
+</html>

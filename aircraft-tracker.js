@@ -275,7 +275,7 @@ export class AircraftTracker {
             const processedAircraft = this.processAircraftData(rawAircraft);
 
             // Update visualization
-            this.visualizer.updateAircraft(processedAircraft);
+            await this.visualizer.updateAircraft(processedAircraft);
 
             // Update statistics
             this.updateCount++;
