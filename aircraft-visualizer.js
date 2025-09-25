@@ -6,7 +6,9 @@ import {
   BillboardGraphics,
   LabelGraphics,
   PolylineGraphics,
+  PlaneGraphics,
   Cartesian3,
+  Cartesian2,
   Color,
   VerticalOrigin,
   HorizontalOrigin,
@@ -16,6 +18,11 @@ import {
   Transforms,
   ScreenSpaceEventHandler,
   ScreenSpaceEventType,
+  ImageMaterialProperty,
+  Plane,
+  HeadingPitchRoll,
+  Matrix3,
+  Quaternion,
 } from "cesium";
 
 import { AircraftClassifier } from "./aircraft-classifier.js";
@@ -232,24 +239,35 @@ export class AircraftVisualizer {
     // Create aircraft icon asynchronously
     const iconImage = await this.createAircraftIcon(aircraft);
 
+    // Calculate orientation quaternion for aircraft heading
+    // Add 90-degree offset to align SVG with actual heading (SVG points north by default)
+    const heading = aircraft.trueTrack
+      ? ((aircraft.trueTrack - 90) * Math.PI) / 180
+      : -Math.PI;
+    const pitch = 0; // Keep plane flat
+    const roll = 0; // No roll
+    const hpr = new HeadingPitchRoll(heading, pitch, roll);
+    const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
+
+    // Calculate plane dimensions based on style size
+    const planeSize = Math.max(40, style.size * 200); // Size in meters
+
     const entity = new Entity({
       id: `aircraft_${aircraft.icao24}`,
       name: aircraft.callsign || aircraft.icao24,
       position: position,
+      orientation: orientation, // 3D orientation for heading
       icao24: aircraft.icao24, // Add icao24 property for click identification
 
-      // Billboard for aircraft icon
-      billboard: new BillboardGraphics({
-        image: iconImage,
+      // 3D Plane for aircraft icon
+      plane: new PlaneGraphics({
+        plane: new Plane(Cartesian3.UNIT_Z, 0), // Plane normal pointing up (Z-axis)
+        dimensions: new Cartesian2(planeSize, planeSize), // Square plane
+        material: new ImageMaterialProperty({
+          image: iconImage,
+          transparent: true,
+        }),
         show: true,
-        pixelSize: Math.max(48, style.size * 24), // Increase size significantly
-        color: style.fillColor,
-        outlineColor: style.outlineColor,
-        outlineWidth: style.outlineWidth,
-        verticalOrigin: VerticalOrigin.CENTER,
-        horizontalOrigin: HorizontalOrigin.CENTER,
-        heightReference: HeightReference.NONE,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
         distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000), // 2000km max distance
       }),
 
@@ -386,7 +404,7 @@ export class AircraftVisualizer {
       const iconUrl = await aircraftIconManager.getAircraftIcon(aircraft, {
         color: aircraft.aircraftType.color,
         size: 80, // Match SVG viewBox size to avoid scaling issues
-        rotation: aircraft.trueTrack || 0,
+        rotation: 0, // No SVG rotation - handled by Billboard
       });
 
       return iconUrl;
