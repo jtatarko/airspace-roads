@@ -43,7 +43,7 @@ export class SidebarUIControls {
                         <span class="tab-label">Airspace</span>
                     </button>
                     <button class="tab-button" data-tab="aircraft">
-                        <span class="tab-label">Aircrafts Tracking</span>
+                        <span class="tab-label">Aircrafts</span>
                     </button>
                 </div>
                 <button class="sidebar-toggle" title="Toggle Sidebar">

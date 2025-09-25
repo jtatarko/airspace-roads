@@ -79,10 +79,16 @@ export class AirspaceClassifier {
 
   static getOutlineColor(airspace, options = {}) {
     const { opacity = 0.8, highlighted = false } = options;
-    const color = Color.WHITE.clone();
+    const classification = this.getClassificationInfo(airspace.icaoClass);
+    const color = classification.color.clone();
+
+    // Make outline color darker by reducing brightness
+    color.red = Math.max(0, color.red * 0.7);
+    color.green = Math.max(0, color.green * 0.7);
+    color.blue = Math.max(0, color.blue * 0.7);
 
     if (highlighted) {
-      color.alpha = 0.5;
+      color.alpha = Math.min(1.0, opacity + 0.3);
     } else {
       color.alpha = opacity;
     }
