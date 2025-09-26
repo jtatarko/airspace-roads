@@ -53,6 +53,9 @@ export class AircraftVisualizer {
     this.speedFilter = { ...AircraftConfig.speedFilter };
     this.activeOnly = true;
 
+    // Hover state tracking
+    this.currentlyHighlighted = null;
+
     // Event handlers
     this.eventHandlers = {
       onAircraftClick: null,
@@ -163,6 +166,12 @@ export class AircraftVisualizer {
     if (trailEntity) {
       this.viewer.entities.remove(trailEntity);
       this.trailEntities.delete(icao24);
+    }
+
+    // Clear highlight if this was the highlighted aircraft
+    const aircraft = this.aircraft.get(icao24);
+    if (aircraft && this.currentlyHighlighted === aircraft) {
+      this.currentlyHighlighted = null;
     }
 
     // Remove from tracking
@@ -717,10 +726,30 @@ export class AircraftVisualizer {
     // Handle mouse move for hover (optional)
     this.clickHandler.setInputAction((event) => {
       const pickedObject = this.viewer.scene.pick(event.endPosition);
+      let hoveredAircraft = null;
+
       if (pickedObject && pickedObject.id && pickedObject.id.icao24) {
-        const aircraft = this.aircraft.get(pickedObject.id.icao24);
-        if (aircraft && this.eventHandlers.onAircraftHover) {
-          this.eventHandlers.onAircraftHover(aircraft, event.endPosition);
+        hoveredAircraft = this.aircraft.get(pickedObject.id.icao24);
+      }
+
+      // If we have a different aircraft than the currently highlighted one
+      if (hoveredAircraft !== this.currentlyHighlighted) {
+        // Clear previous highlight
+        if (this.currentlyHighlighted) {
+          this.highlightAircraft(this.currentlyHighlighted.icao24, false);
+        }
+
+        // Set new highlight
+        if (hoveredAircraft) {
+          this.highlightAircraft(hoveredAircraft.icao24, true);
+        }
+
+        // Update tracking
+        this.currentlyHighlighted = hoveredAircraft;
+
+        // Call hover callback
+        if (this.eventHandlers.onAircraftHover) {
+          this.eventHandlers.onAircraftHover(hoveredAircraft, event.endPosition);
         }
       }
     }, ScreenSpaceEventType.MOUSE_MOVE);

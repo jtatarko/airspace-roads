@@ -74,9 +74,8 @@ export class AircraftTracker {
         });
 
         this.visualizer.onAircraftHover((aircraft, position) => {
-            if (aircraft) {
-                this.visualizer.highlightAircraft(aircraft.icao24, true);
-            }
+            // Hover highlighting is now handled directly in the visualizer
+            // This callback can be used for other hover-related functionality if needed
         });
     }
 
