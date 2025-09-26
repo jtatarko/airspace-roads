@@ -152,26 +152,70 @@ createWorldTerrainAsync().then((terrainProvider) => {
 //   viewer.terrainProvider = terrainProvider;
 // });
 
-// Enhanced click handler with airspace and aircraft integration
+// Enhanced click handler with pick priority system
 const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+
+// Priority system configuration
+// Lower numbers = higher priority
+const PICK_PRIORITIES = {
+  aircraft: 1,    // Highest priority - aircraft selected over airspace
+  airspace: 2,    // Lower priority
+  terrain: 3      // Lowest priority
+};
+
+// Future enhancement: Make priorities configurable via UI
+// For example: PICK_PRIORITIES.aircraft = 2; PICK_PRIORITIES.airspace = 1;
+// would prioritize airspace selection over aircraft
+
+function getEntityPriority(entity) {
+  if (entity.icao24) return PICK_PRIORITIES.aircraft;
+  if (entity.airspaceData) return PICK_PRIORITIES.airspace;
+  return PICK_PRIORITIES.terrain;
+}
+
+function getEntityType(entity) {
+  if (entity.icao24) return 'aircraft';
+  if (entity.airspaceData) return 'airspace';
+  return 'terrain';
+}
+
 handler.setInputAction(function (click) {
   console.log('Click detected via Cesium event handler!');
 
-  // First check if an aircraft was clicked
-  if (aircraftTracker) {
-    const aircraft = aircraftTracker.handleClick(click.position);
-    if (aircraft) {
-      // Aircraft was clicked, let the aircraft system handle it
-      return;
-    }
-  }
+  // Use drillPick to get ALL objects at click position
+  const allPickedObjects = viewer.scene.drillPick(click.position);
 
-  // Check if an airspace was clicked
-  if (airspaceVisualizer) {
-    const airspace = airspaceVisualizer.handleClick(click.position);
-    if (airspace) {
-      // Airspace was clicked, let the airspace system handle it
-      return;
+  if (allPickedObjects.length > 0) {
+    // Filter to only entities we care about and sort by priority
+    const relevantEntities = allPickedObjects
+      .filter(pickedObject => pickedObject.id &&
+              (pickedObject.id.icao24 || pickedObject.id.airspaceData))
+      .sort((a, b) => getEntityPriority(a.id) - getEntityPriority(b.id));
+
+    if (relevantEntities.length > 0) {
+      const topPriorityObject = relevantEntities[0];
+      const entity = topPriorityObject.id;
+      const entityType = getEntityType(entity);
+
+      console.log(`Selected ${entityType} with priority ${getEntityPriority(entity)}`);
+
+      // Handle based on entity type
+      if (entityType === 'aircraft' && aircraftTracker && aircraftTracker.visualizer) {
+        const aircraft = aircraftTracker.visualizer.aircraft.get(entity.icao24);
+        if (aircraft && aircraftTracker.visualizer.eventHandlers &&
+            aircraftTracker.visualizer.eventHandlers.onAircraftClick) {
+          aircraftTracker.visualizer.eventHandlers.onAircraftClick(aircraft, click.position);
+          return;
+        }
+      } else if (entityType === 'airspace' && airspaceVisualizer) {
+        // Call the airspace click handler with the airspace data
+        if (airspaceVisualizer.eventHandlers &&
+            airspaceVisualizer.eventHandlers.onAirspaceClick &&
+            entity.airspaceData) {
+          airspaceVisualizer.eventHandlers.onAirspaceClick(entity.airspaceData, click.position);
+          return;
+        }
+      }
     }
   }
 

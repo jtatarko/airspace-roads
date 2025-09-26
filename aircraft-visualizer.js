@@ -23,6 +23,7 @@ import {
   ImageMaterialProperty,
   Plane,
   HeadingPitchRoll,
+  HeadingPitchRange,
   Matrix3,
   Quaternion,
 } from "cesium";
@@ -270,7 +271,7 @@ export class AircraftVisualizer {
       // 3D Aircraft Model
       model: new ModelGraphics({
         uri: "./assets/airliner.glb",
-        scale: Math.max(15, style.size * 7.5), // Scale based on aircraft type (50% bigger)
+        scale: Math.max(15, style.size * 5), // Scale based on aircraft type (50% bigger)
         show: true,
         distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000),
         color: style.fillColor,
@@ -694,34 +695,38 @@ export class AircraftVisualizer {
     const entity = this.entities.get(icao24);
     if (!entity) return;
 
-    this.viewer.zoomTo(entity);
+    // Use flyTo with custom range instead of zoomTo for less aggressive zoom
+    // Position camera 5km above aircraft altitude for consistent relative view
+    const aircraft = this.aircraft.get(icao24);
+    if (aircraft && aircraft.latitude && aircraft.longitude) {
+      const position = Cartesian3.fromDegrees(
+        aircraft.longitude,
+        aircraft.latitude,
+        (aircraft.baroAltitude || 0) + 8000 // 5km above aircraft
+      );
+
+      this.viewer.camera.flyTo({
+        destination: position,
+        offset: new HeadingPitchRange(0, -0.8, 10000), // Looking down at aircraft from above
+        duration: 1.0,
+      });
+    } else {
+      // Fallback to zoomTo if position data unavailable
+      this.viewer.zoomTo(entity);
+    }
+
     this.selectAircraft(icao24, true);
   }
 
   /**
-   * Set up Cesium click and hover handlers
+   * Set up Cesium hover handlers (click handling moved to main.js priority system)
    */
   setupClickHandlers() {
-    // Create screen space event handler for clicks
+    // Create screen space event handler for hover only
     this.clickHandler = new ScreenSpaceEventHandler(this.viewer.scene.canvas);
 
-    // Handle left clicks
-    this.clickHandler.setInputAction((event) => {
-      console.log("Click detected, checking for aircraft at position");
-      const pickedObject = this.viewer.scene.pick(event.position);
-      if (pickedObject && pickedObject.id) {
-        const entity = pickedObject.id;
-        // Check if this is an aircraft entity (has icao24 property)
-        if (entity.icao24) {
-          console.log("Aircraft entity clicked:", entity.icao24);
-          const aircraft = this.aircraft.get(entity.icao24);
-          if (aircraft && this.eventHandlers.onAircraftClick) {
-            console.log("Calling onAircraftClick handler");
-            this.eventHandlers.onAircraftClick(aircraft, event.position);
-          }
-        }
-      }
-    }, ScreenSpaceEventType.LEFT_CLICK);
+    // Note: Click handling is now managed by the priority system in main.js
+    // This handler only manages hover events
 
     // Handle mouse move for hover (optional)
     this.clickHandler.setInputAction((event) => {
@@ -749,7 +754,10 @@ export class AircraftVisualizer {
 
         // Call hover callback
         if (this.eventHandlers.onAircraftHover) {
-          this.eventHandlers.onAircraftHover(hoveredAircraft, event.endPosition);
+          this.eventHandlers.onAircraftHover(
+            hoveredAircraft,
+            event.endPosition
+          );
         }
       }
     }, ScreenSpaceEventType.MOUSE_MOVE);
