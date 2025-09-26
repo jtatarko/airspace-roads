@@ -742,7 +742,11 @@ export class AircraftUIControls {
             </div>
         `;
 
-    this.infoPanel.querySelector(".aircraft-info-content").innerHTML = infoHTML;
+    const contentElement = this.infoPanel.querySelector(".aircraft-info-content");
+    // Clear any existing content first
+    contentElement.innerHTML = "";
+    // Add the new content
+    contentElement.innerHTML = infoHTML;
     this.infoPanel.style.display = "block";
   }
 
@@ -751,6 +755,10 @@ export class AircraftUIControls {
    */
   hideAircraftInfo() {
     this.infoPanel.style.display = "none";
+
+    // Reset to empty state
+    const contentElement = this.infoPanel.querySelector(".aircraft-info-content");
+    contentElement.innerHTML = "<p>Click on an aircraft to see detailed information</p>";
 
     if (this.selectedAircraft) {
       this.tracker.visualizer.selectAircraft(

@@ -648,7 +648,9 @@ export class SidebarUIControls {
 
   showAircraftInfo(aircraft) {
     console.log('Showing aircraft info for:', aircraft);
-    const placeholder = this.sidebar.querySelector(".info-placeholder");
+    // Find the aircraft info placeholder specifically, not the airspace one
+    const aircraftSection = this.sidebar.querySelector("#sidebarAircraftDetails").parentElement;
+    const placeholder = aircraftSection.querySelector(".info-placeholder");
     const details = this.sidebar.querySelector("#sidebarAircraftDetails");
 
     if (placeholder) placeholder.style.display = "none";
