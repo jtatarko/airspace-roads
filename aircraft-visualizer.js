@@ -7,6 +7,8 @@ import {
   LabelGraphics,
   PolylineGraphics,
   PlaneGraphics,
+  ModelGraphics,
+  BoxGraphics,
   Cartesian3,
   Cartesian2,
   Color,
@@ -236,21 +238,18 @@ export class AircraftVisualizer {
       lod: this.determineLOD(aircraft),
     });
 
-    // Create aircraft icon asynchronously
-    const iconImage = await this.createAircraftIcon(aircraft);
-
-    // Calculate orientation quaternion for aircraft heading
-    // Add 90-degree offset to align SVG with actual heading (SVG points north by default)
+    // Calculate aircraft orientation based on heading
+    // Add 180-degree rotation to correct model orientation
     const heading = aircraft.trueTrack
-      ? ((aircraft.trueTrack - 90) * Math.PI) / 180
-      : -Math.PI;
-    const pitch = 0; // Keep plane flat
+      ? (aircraft.trueTrack * Math.PI) / 180 + Math.PI
+      : Math.PI;
+    const pitch = 0; // Keep aircraft level
     const roll = 0; // No roll
     const hpr = new HeadingPitchRoll(heading, pitch, roll);
     const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
 
-    // Calculate plane dimensions based on style size
-    const planeSize = Math.max(40, style.size * 200); // Size in meters
+    // Calculate model scale based on aircraft type
+    const modelScale = Math.max(10, style.size * 5); // Scale factor
 
     const entity = new Entity({
       id: `aircraft_${aircraft.icao24}`,
@@ -259,16 +258,15 @@ export class AircraftVisualizer {
       orientation: orientation, // 3D orientation for heading
       icao24: aircraft.icao24, // Add icao24 property for click identification
 
-      // 3D Plane for aircraft icon
-      plane: new PlaneGraphics({
-        plane: new Plane(Cartesian3.UNIT_Z, 0), // Plane normal pointing up (Z-axis)
-        dimensions: new Cartesian2(planeSize, planeSize), // Square plane
-        material: new ImageMaterialProperty({
-          image: iconImage,
-          transparent: true,
-        }),
+      // 3D Aircraft Model
+      model: new ModelGraphics({
+        uri: "./assets/airliner.glb",
+        scale: Math.max(15, style.size * 7.5), // Scale based on aircraft type (50% bigger)
         show: true,
-        distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000), // 2000km max distance
+        distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000),
+        color: style.fillColor,
+        colorBlendMode: 0, // Mix color with model
+        colorBlendAmount: 0.3, // Blend amount (0-1)
       }),
 
       // Label for aircraft information

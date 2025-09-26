@@ -249,6 +249,18 @@ export class SidebarUIControls {
             </div>
 
             <div class="control-section">
+                <div class="section-header">
+                    <h4>Data Source</h4>
+                </div>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="sidebarDemoMode">
+                        Demo Mode (Dummy Data)
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-section">
                 <div class="status-grid">
                     <div class="status-item">
                         <span class="status-label">Status</span>
@@ -484,6 +496,14 @@ export class SidebarUIControls {
       if (typeof this.aircraftTracker.onStatusChange === "function") {
         this.aircraftTracker.onStatusChange((status) => {
           this.updateAircraftStatus(status);
+        });
+      }
+
+      // Demo mode toggle handler
+      const demoModeCheckbox = document.getElementById('sidebarDemoMode');
+      if (demoModeCheckbox && typeof this.aircraftTracker.setDemoMode === "function") {
+        demoModeCheckbox.addEventListener('change', (e) => {
+          this.aircraftTracker.setDemoMode(e.target.checked);
         });
       }
     }

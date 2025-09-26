@@ -4,7 +4,8 @@
 import { AircraftAPIService } from './aircraft-api-service.js';
 import { AircraftClassifier } from './aircraft-classifier.js';
 import { AircraftVisualizer } from './aircraft-visualizer.js';
-import { ProcessedAircraft, AircraftConfig } from './aircraft-types.js';
+import { ProcessedAircraft, AircraftConfig, AircraftState } from './aircraft-types.js';
+import { dummyAircraftGenerator } from './dummy-aircraft-data.js';
 
 /**
  * Main aircraft tracking system that manages data fetching, processing,
@@ -27,6 +28,7 @@ export class AircraftTracker {
         this.updateTimer = null;
         this.isRunning = false;
         this.isPaused = false;
+        this.demoMode = false;
 
         // Position interpolation
         this.interpolationEnabled = true;
@@ -247,28 +249,38 @@ export class AircraftTracker {
         const startTime = performance.now();
 
         try {
-            console.log('Fetching aircraft data...');
+            console.log('Fetching aircraft data...', this.demoMode ? '(Demo Mode)' : '(Live API)');
 
-            // Fetch data based on region configuration
+            // Fetch data based on demo mode or region configuration
             let rawAircraft;
-            switch (this.config.region) {
-                case 'slovenia':
-                    rawAircraft = await this.apiService.fetchAircraftInSlovenia();
-                    break;
-                case 'custom':
-                    if (this.config.customBounds) {
-                        rawAircraft = await this.apiService.fetchAircraftData({
-                            bbox: this.config.customBounds
-                        });
-                    } else {
-                        throw new Error('Custom bounds not configured');
-                    }
-                    break;
-                case 'global':
-                    rawAircraft = await this.apiService.fetchAircraftData();
-                    break;
-                default:
-                    rawAircraft = await this.apiService.fetchAircraftInSlovenia();
+
+            if (this.demoMode) {
+                // Use dummy data
+                const dummyData = dummyAircraftGenerator.getCurrentStates();
+                // Convert raw arrays to AircraftState objects (like real API does)
+                rawAircraft = dummyData.states.map(stateArray => new AircraftState(stateArray));
+                console.log(`Using dummy data: ${rawAircraft.length} aircraft`);
+            } else {
+                // Use real API data
+                switch (this.config.region) {
+                    case 'slovenia':
+                        rawAircraft = await this.apiService.fetchAircraftInSlovenia();
+                        break;
+                    case 'custom':
+                        if (this.config.customBounds) {
+                            rawAircraft = await this.apiService.fetchAircraftData({
+                                bbox: this.config.customBounds
+                            });
+                        } else {
+                            throw new Error('Custom bounds not configured');
+                        }
+                        break;
+                    case 'global':
+                        rawAircraft = await this.apiService.fetchAircraftData();
+                        break;
+                    default:
+                        rawAircraft = await this.apiService.fetchAircraftInSlovenia();
+                }
             }
 
             // Process and classify aircraft
@@ -571,6 +583,35 @@ export class AircraftTracker {
      */
     handleHover(position) {
         return this.visualizer.handleHover(position);
+    }
+
+    /**
+     * Set demo mode on/off
+     * @param {boolean} enabled - Enable demo mode
+     */
+    setDemoMode(enabled) {
+        this.demoMode = enabled;
+        console.log(`Demo mode ${enabled ? 'enabled' : 'disabled'}`);
+
+        if (enabled) {
+            // Generate initial dummy fleet when enabling demo mode
+            dummyAircraftGenerator.generateInitialFleet(15);
+
+            // Clear existing aircraft from visualization
+            this.aircraft.clear();
+            this.visualizer.clearAircraft();
+
+            console.log('Switched to dummy aircraft data');
+        } else {
+            console.log('Switched to live API data');
+        }
+
+        // If tracking is running, trigger an immediate update
+        if (this.isRunning && !this.isPaused) {
+            this.updateAircraftData().catch(error => {
+                console.error('Error updating aircraft data after mode switch:', error);
+            });
+        }
     }
 
     /**
