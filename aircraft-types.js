@@ -87,7 +87,7 @@ export const AircraftCategories = {
     name: "Helicopter",
     color: "#45B7D1",
     icon: "🚁",
-    size: 1.2,
+    size: 1.0,
     patterns: ["R44", "H12", "EC1", "AS3", "B06", "S76", "AW1"],
     callsignPatterns: [/HEMS/, /POLICE/, /RESCUE/],
   },

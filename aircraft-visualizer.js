@@ -33,6 +33,25 @@ import { ProcessedAircraft, AircraftConfig } from "./aircraft-types.js";
 import { aircraftIconManager } from "./aircraft-icon-manager.js";
 
 /**
+ * Maps aircraft category IDs to their 3D model files
+ */
+const AIRCRAFT_MODELS = {
+  commercial: "./assets/airliner.glb",
+  general: "./assets/general.glb",
+  helicopter: "./assets/helicopter.glb",
+  light: "./assets/light.glb",
+  military: "./assets/military.glb",
+  unknown: null // Will use box geometry
+};
+
+/**
+ * Get the appropriate 3D model URI for an aircraft category
+ */
+function getModelUri(categoryId) {
+  return AIRCRAFT_MODELS[categoryId] || AIRCRAFT_MODELS.unknown;
+}
+
+/**
  * Aircraft visualization system for Cesium viewer
  * Manages aircraft entities, trails, labels, and visual effects
  */
@@ -258,8 +277,9 @@ export class AircraftVisualizer {
     const hpr = new HeadingPitchRoll(heading, pitch, roll);
     const orientation = Transforms.headingPitchRollQuaternion(position, hpr);
 
-    // Calculate model scale based on aircraft type
-    const modelScale = Math.max(10, style.size * 5); // Scale factor
+    // Get the appropriate model URI for this aircraft category
+    const modelUri = getModelUri(aircraft.aircraftType.id);
+    const modelScale = Math.max(15, style.size * 5); // Scale based on aircraft type
 
     const entity = new Entity({
       id: `aircraft_${aircraft.icao24}`,
@@ -267,40 +287,51 @@ export class AircraftVisualizer {
       position: position,
       orientation: orientation, // 3D orientation for heading
       icao24: aircraft.icao24, // Add icao24 property for click identification
+    });
 
-      // 3D Aircraft Model
-      model: new ModelGraphics({
-        uri: "./assets/airliner.glb",
-        scale: Math.max(15, style.size * 5), // Scale based on aircraft type (50% bigger)
+    // Add 3D model or box geometry based on aircraft category
+    if (modelUri) {
+      // Use 3D model for known aircraft types
+      entity.model = new ModelGraphics({
+        uri: modelUri,
+        scale: modelScale,
         show: true,
         distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000),
         color: style.fillColor,
         colorBlendMode: 0, // Mix color with model
         colorBlendAmount: 0.3, // Blend amount (0-1)
-      }),
+      });
+    } else {
+      // Use box geometry for unknown aircraft
+      entity.box = new BoxGraphics({
+        dimensions: new Cartesian3(modelScale * 2, modelScale * 0.5, modelScale * 0.3),
+        material: style.fillColor,
+        show: true,
+        distanceDisplayCondition: new DistanceDisplayCondition(0, 2000000),
+      });
+    }
 
-      // Label for aircraft information
-      label: style.showLabel
-        ? new LabelGraphics({
-            text: style.labelText,
-            font: style.labelStyle.font,
-            fillColor: style.labelStyle.fillColor,
-            outlineColor: style.labelStyle.outlineColor,
-            outlineWidth: style.labelStyle.outlineWidth,
-            style: style.labelStyle.style,
-            pixelOffset: style.labelStyle.pixelOffset,
-            verticalOrigin: VerticalOrigin.BOTTOM,
-            horizontalOrigin: HorizontalOrigin.CENTER,
-            heightReference: HeightReference.NONE,
-            show: true,
-            scale: style.labelStyle.scale,
-            showBackground: style.labelStyle.showBackground,
-            backgroundColor: style.labelStyle.backgroundColor,
-            backgroundPadding: style.labelStyle.backgroundPadding,
-            distanceDisplayCondition: new DistanceDisplayCondition(0, 500000), // 500km max label distance
-          })
-        : undefined,
-    });
+    // Add label for aircraft information
+    if (style.showLabel) {
+      entity.label = new LabelGraphics({
+        text: style.labelText,
+        font: style.labelStyle.font,
+        fillColor: style.labelStyle.fillColor,
+        outlineColor: style.labelStyle.outlineColor,
+        outlineWidth: style.labelStyle.outlineWidth,
+        style: style.labelStyle.style,
+        pixelOffset: style.labelStyle.pixelOffset,
+        verticalOrigin: VerticalOrigin.BOTTOM,
+        horizontalOrigin: HorizontalOrigin.CENTER,
+        heightReference: HeightReference.NONE,
+        show: true,
+        scale: style.labelStyle.scale,
+        showBackground: style.labelStyle.showBackground,
+        backgroundColor: style.labelStyle.backgroundColor,
+        backgroundPadding: style.labelStyle.backgroundPadding,
+        distanceDisplayCondition: new DistanceDisplayCondition(0, 500000), // 500km max label distance
+      });
+    }
 
     // Set orientation if heading is available
     if (aircraft.trueTrack !== null) {
