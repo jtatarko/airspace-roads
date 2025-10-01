@@ -7,6 +7,7 @@ import { AircraftTracker } from './aircraft-tracker.js';
 import { AircraftUIControls } from './aircraft-ui-controls.js';
 import { AirspaceViolationDetector } from './airspace-violation-detector.js';
 import { SidebarUIControls } from './sidebar-ui-controls.js';
+import { WeatherRadarManager } from './weather-radar/weather-radar-manager.js';
 
 // (optional but recommended) set your Cesium ion token
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN || "";
@@ -24,6 +25,7 @@ let aircraftTracker;
 let aircraftControls;
 let violationDetector;
 let sidebarControls;
+let weatherRadarManager;
 
 async function initializeVisualizationSystem() {
   try {
@@ -41,12 +43,15 @@ async function initializeVisualizationSystem() {
     // Create violation detector
     violationDetector = new AirspaceViolationDetector(airspaceVisualizer);
 
+    // Create weather radar manager
+    weatherRadarManager = new WeatherRadarManager(viewer);
+
     // Create legacy UI controls (hidden by default)
     airspaceControls = new AirspaceUIControls(airspaceVisualizer);
     aircraftControls = new AircraftUIControls(aircraftTracker);
 
     // Create new unified sidebar
-    sidebarControls = new SidebarUIControls(airspaceVisualizer, aircraftTracker);
+    sidebarControls = new SidebarUIControls(airspaceVisualizer, aircraftTracker, weatherRadarManager);
 
     // Connect legacy controls to sidebar
     sidebarControls.setAirspaceControls(airspaceControls);
@@ -59,6 +64,7 @@ async function initializeVisualizationSystem() {
     window.airspaceControls = airspaceControls;
     window.aircraftControls = aircraftControls;
     window.sidebarControls = sidebarControls;
+    window.weatherRadarManager = weatherRadarManager;
 
     // Setup aircraft tracking integration with violation detection
     aircraftTracker.onAircraftUpdate((event) => {

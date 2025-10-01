@@ -5,9 +5,10 @@ import { AirspaceClassifier } from "./airspace-classifier.js";
 import { AircraftConfig } from "./aircraft-types.js";
 
 export class SidebarUIControls {
-  constructor(airspaceVisualizer, aircraftTracker) {
+  constructor(airspaceVisualizer, aircraftTracker, weatherRadarManager = null) {
     this.airspaceVisualizer = airspaceVisualizer;
     this.aircraftTracker = aircraftTracker;
+    this.weatherRadarManager = weatherRadarManager;
 
     // UI state
     this.isCollapsed = false;
@@ -55,6 +56,9 @@ export class SidebarUIControls {
                     <button class="tab-button" data-tab="aircraft">
                         <span class="tab-label">Aircrafts</span>
                     </button>
+                    <button class="tab-button" data-tab="weather">
+                        <span class="tab-label">Weather</span>
+                    </button>
                 </div>
                 <button class="sidebar-toggle" title="Toggle Sidebar">
                     <span class="toggle-icon">x</span>
@@ -66,6 +70,9 @@ export class SidebarUIControls {
                 </div>
                 <div class="tab-content" data-tab="aircraft">
                     <!-- Aircraft controls will be populated here -->
+                </div>
+                <div class="tab-content" data-tab="weather">
+                    <!-- Weather radar controls will be populated here -->
                 </div>
             </div>
         `;
@@ -153,6 +160,7 @@ export class SidebarUIControls {
   initializeTabContent() {
     this.createAirspaceTabContent();
     this.createAircraftTabContent();
+    this.createWeatherTabContent();
 
     // Setup event listeners for the tab content elements
     this.setupTabEventListeners();
@@ -333,6 +341,92 @@ export class SidebarUIControls {
         `;
   }
 
+  createWeatherTabContent() {
+    const weatherTab = this.contentContainer.querySelector(
+      '[data-tab="weather"]'
+    );
+    weatherTab.innerHTML = `
+            <div class="control-section">
+                <div class="section-header">
+                    <h4>Weather Radar Control</h4>
+                </div>
+                <div class="action-buttons">
+                    <button id="weatherRadarToggle" class="btn primary">Activate Radar</button>
+                    <button id="weatherRadarTest" class="btn secondary">Test Connection</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-header">
+                    <h4>Update Settings</h4>
+                </div>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="weatherAutoUpdate">
+                        Auto Update (10 min intervals)
+                    </label>
+                </div>
+                <div class="action-buttons">
+                    <button id="weatherManualUpdate" class="btn secondary" disabled>Update Now</button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-header">
+                    <h4>Animation Control</h4>
+                </div>
+                <div class="action-buttons">
+                    <button id="weatherAnimationToggle" class="btn secondary" disabled>Start Animation</button>
+                </div>
+                <div class="slider-control">
+                    <label for="weatherAnimationSpeed">Animation Speed</label>
+                    <input type="range" id="weatherAnimationSpeed"
+                           min="500" max="3000" step="100" value="1000" disabled>
+                    <div class="range-labels">
+                        <span>Fast (0.5s)</span>
+                        <span>Slow (3s)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-header">
+                    <h4>Display Options</h4>
+                </div>
+                <div class="slider-control">
+                    <label for="weatherRadarOpacity">Radar Opacity</label>
+                    <input type="range" id="weatherRadarOpacity"
+                           min="0.1" max="1.0" step="0.1" value="0.7" disabled>
+                    <div class="range-labels">
+                        <span>10%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="status-grid">
+                    <div class="status-item">
+                        <span class="status-label">Status</span>
+                        <span class="status-value" id="weatherRadarStatus">Inactive</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Last Update</span>
+                        <span class="status-value" id="weatherLastUpdate">--</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Points</span>
+                        <span class="status-value" id="weatherDataPoints">0</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Cache Size</span>
+                        <span class="status-value" id="weatherCacheSize">0 KB</span>
+                    </div>
+                </div>
+            </div>
+        `;
+  }
+
   setupTabEventListeners() {
     // Setup event listeners for elements created in tab content
 
@@ -507,6 +601,9 @@ export class SidebarUIControls {
         });
       }
     }
+
+    // Weather radar tab listeners
+    this.setupWeatherEventListeners();
   }
 
   // Update methods
@@ -970,6 +1067,204 @@ export class SidebarUIControls {
     originalControls.forEach((control) => {
       control.style.display = "block";
     });
+  }
+
+  setupWeatherEventListeners() {
+    if (!this.weatherRadarManager) return;
+
+    // Get weather control elements
+    const toggleBtn = this.sidebar.querySelector("#weatherRadarToggle");
+    const testBtn = this.sidebar.querySelector("#weatherRadarTest");
+    const autoUpdateCheckbox = this.sidebar.querySelector("#weatherAutoUpdate");
+    const manualUpdateBtn = this.sidebar.querySelector("#weatherManualUpdate");
+    const animationToggle = this.sidebar.querySelector("#weatherAnimationToggle");
+    const animationSpeed = this.sidebar.querySelector("#weatherAnimationSpeed");
+    const opacitySlider = this.sidebar.querySelector("#weatherRadarOpacity");
+
+    // Status elements
+    const statusElement = this.sidebar.querySelector("#weatherRadarStatus");
+    const lastUpdateElement = this.sidebar.querySelector("#weatherLastUpdate");
+    const dataPointsElement = this.sidebar.querySelector("#weatherDataPoints");
+    const cacheSizeElement = this.sidebar.querySelector("#weatherCacheSize");
+
+    // Radar toggle
+    if (toggleBtn) {
+      toggleBtn.addEventListener("click", async () => {
+        const status = this.weatherRadarManager.getStatus();
+
+        if (status.isActive) {
+          this.weatherRadarManager.deactivate();
+          toggleBtn.textContent = "Activate Radar";
+          toggleBtn.className = "btn primary";
+          this.updateWeatherControlStates(false);
+        } else {
+          toggleBtn.textContent = "Activating...";
+          toggleBtn.disabled = true;
+
+          try {
+            await this.weatherRadarManager.activate();
+            toggleBtn.textContent = "Deactivate Radar";
+            toggleBtn.className = "btn danger";
+            this.updateWeatherControlStates(true);
+          } catch (error) {
+            console.error("Failed to activate weather radar:", error);
+            toggleBtn.textContent = "Activate Radar";
+          } finally {
+            toggleBtn.disabled = false;
+          }
+        }
+
+        this.updateWeatherStatus();
+      });
+    }
+
+    // Test connection
+    if (testBtn) {
+      testBtn.addEventListener("click", async () => {
+        testBtn.textContent = "Testing...";
+        testBtn.disabled = true;
+
+        try {
+          const result = await this.weatherRadarManager.testConnection();
+          alert(result.message);
+        } catch (error) {
+          alert("Test failed: " + error.message);
+        } finally {
+          testBtn.textContent = "Test Connection";
+          testBtn.disabled = false;
+        }
+      });
+    }
+
+    // Auto update toggle
+    if (autoUpdateCheckbox) {
+      autoUpdateCheckbox.addEventListener("change", (e) => {
+        this.weatherRadarManager.setAutoUpdate(e.target.checked);
+        this.updateWeatherStatus();
+      });
+    }
+
+    // Manual update
+    if (manualUpdateBtn) {
+      manualUpdateBtn.addEventListener("click", async () => {
+        manualUpdateBtn.textContent = "Updating...";
+        manualUpdateBtn.disabled = true;
+
+        try {
+          await this.weatherRadarManager.updateRadarData();
+          this.updateWeatherStatus();
+        } catch (error) {
+          console.error("Manual update failed:", error);
+        } finally {
+          manualUpdateBtn.textContent = "Update Now";
+          manualUpdateBtn.disabled = false;
+        }
+      });
+    }
+
+    // Animation toggle
+    if (animationToggle) {
+      animationToggle.addEventListener("click", () => {
+        const status = this.weatherRadarManager.getStatus();
+
+        if (status.isAnimating) {
+          this.weatherRadarManager.stopAnimation();
+          animationToggle.textContent = "Start Animation";
+        } else {
+          this.weatherRadarManager.startAnimation(60); // 60 minutes
+          animationToggle.textContent = "Stop Animation";
+        }
+
+        this.updateWeatherStatus();
+      });
+    }
+
+    // Animation speed
+    if (animationSpeed) {
+      animationSpeed.addEventListener("input", (e) => {
+        this.weatherRadarManager.setAnimationSpeed(parseInt(e.target.value));
+      });
+    }
+
+    // Opacity control
+    if (opacitySlider) {
+      opacitySlider.addEventListener("input", (e) => {
+        this.weatherRadarManager.setOpacity(parseFloat(e.target.value));
+      });
+    }
+
+    // Set up callbacks for weather manager events
+    this.weatherRadarManager.onDataUpdateCallback((data) => {
+      this.updateWeatherStatus();
+    });
+
+    this.weatherRadarManager.onErrorCallback((error) => {
+      console.error("Weather radar error:", error);
+      this.updateWeatherStatus();
+    });
+
+    this.weatherRadarManager.onAnimationFrameCallback((frame) => {
+      if (lastUpdateElement) {
+        lastUpdateElement.textContent = frame.timestamp.toLocaleTimeString();
+      }
+    });
+
+    // Initial status update
+    this.updateWeatherStatus();
+  }
+
+  updateWeatherControlStates(active) {
+    const manualUpdateBtn = this.sidebar.querySelector("#weatherManualUpdate");
+    const animationToggle = this.sidebar.querySelector("#weatherAnimationToggle");
+    const animationSpeed = this.sidebar.querySelector("#weatherAnimationSpeed");
+    const opacitySlider = this.sidebar.querySelector("#weatherRadarOpacity");
+
+    if (manualUpdateBtn) manualUpdateBtn.disabled = !active;
+    if (animationToggle) animationToggle.disabled = !active;
+    if (animationSpeed) animationSpeed.disabled = !active;
+    if (opacitySlider) opacitySlider.disabled = !active;
+  }
+
+  updateWeatherStatus() {
+    if (!this.weatherRadarManager) return;
+
+    const status = this.weatherRadarManager.getStatus();
+    const statusElement = this.sidebar.querySelector("#weatherRadarStatus");
+    const lastUpdateElement = this.sidebar.querySelector("#weatherLastUpdate");
+    const dataPointsElement = this.sidebar.querySelector("#weatherDataPoints");
+    const cacheSizeElement = this.sidebar.querySelector("#weatherCacheSize");
+
+    if (statusElement) {
+      let statusText = "Inactive";
+      if (status.isActive) statusText = "Active";
+      if (status.isAnimating) statusText = "Animating";
+      statusElement.textContent = statusText;
+    }
+
+    if (lastUpdateElement && status.lastUpdate) {
+      lastUpdateElement.textContent = new Date(status.lastUpdate).toLocaleTimeString();
+    }
+
+    if (dataPointsElement && status.renderStats) {
+      dataPointsElement.textContent = status.renderStats.totalEntities;
+    }
+
+    if (cacheSizeElement && status.cacheStats) {
+      const sizeKB = Math.round(status.cacheStats.storageSize / 1024);
+      cacheSizeElement.textContent = `${sizeKB} KB`;
+    }
+
+    // Update auto-update checkbox
+    const autoUpdateCheckbox = this.sidebar.querySelector("#weatherAutoUpdate");
+    if (autoUpdateCheckbox) {
+      autoUpdateCheckbox.checked = status.autoUpdate;
+    }
+
+    // Update animation button text
+    const animationToggle = this.sidebar.querySelector("#weatherAnimationToggle");
+    if (animationToggle) {
+      animationToggle.textContent = status.isAnimating ? "Stop Animation" : "Start Animation";
+    }
   }
 
   destroy() {
