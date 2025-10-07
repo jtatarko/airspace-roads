@@ -1,4 +1,4 @@
-import { Entity, PolygonGraphics, Color, Cartesian3, Cartographic, Math as CesiumMath } from "cesium";
+import { Entity, PointGraphics, Color, Cartesian3, Cartographic, Math as CesiumMath, HeightReference } from "cesium";
 
 export class RadarPolygonRenderer {
     constructor(viewer) {
@@ -9,36 +9,42 @@ export class RadarPolygonRenderer {
     }
 
     createPolygonFromPoint(lat, lon, intensity, altitude) {
-        const halfCell = this.cellSize / 2;
+        // Validate inputs
+        if (isNaN(lat) || isNaN(lon) || isNaN(intensity) || isNaN(altitude)) {
+            console.warn('Invalid point parameters:', { lat, lon, intensity, altitude });
+            return null;
+        }
 
-        // Create polygon bounds around the point
-        const positions = [
-            Cartesian3.fromDegrees(lon - halfCell, lat - halfCell),
-            Cartesian3.fromDegrees(lon + halfCell, lat - halfCell),
-            Cartesian3.fromDegrees(lon + halfCell, lat + halfCell),
-            Cartesian3.fromDegrees(lon - halfCell, lat + halfCell)
-        ];
+        try {
+            const color = this.getColorForIntensity(intensity);
+            const opacity = this.getOpacityForIntensity(intensity);
 
-        const color = this.getColorForIntensity(intensity);
-        const opacity = this.getOpacityForIntensity(intensity);
+            // Use points instead of polygons for stability
+            // Size the points based on intensity and cell size
+            const pixelSize = Math.max(10, intensity / 100 * 50);
 
-        return new Entity({
-            polygon: new PolygonGraphics({
-                hierarchy: positions,
-                material: color.withAlpha(opacity),
-                outline: false,
-                height: 0,
-                extrudedHeight: altitude,
-                shadows: false
-            }),
-            properties: {
-                type: 'weather-radar',
-                intensity: intensity,
-                altitude: altitude,
-                lat: lat,
-                lon: lon
-            }
-        });
+            return new Entity({
+                position: Cartesian3.fromDegrees(lon, lat, altitude),
+                point: new PointGraphics({
+                    pixelSize: pixelSize,
+                    color: color.withAlpha(opacity),
+                    outlineColor: Color.TRANSPARENT,
+                    outlineWidth: 0,
+                    heightReference: HeightReference.RELATIVE_TO_GROUND,
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY
+                }),
+                properties: {
+                    type: 'weather-radar',
+                    intensity: intensity,
+                    altitude: altitude,
+                    lat: lat,
+                    lon: lon
+                }
+            });
+        } catch (error) {
+            console.error('Error creating point entity:', error);
+            return null;
+        }
     }
 
     getColorForIntensity(intensity) {
@@ -72,9 +78,11 @@ export class RadarPolygonRenderer {
 
                 if (intensity > 0) {
                     const entity = this.createPolygonFromPoint(lat, lon, intensity, altitude);
-                    entity.show = this.isVisible;
-                    this.radarEntities.push(entity);
-                    this.viewer.entities.add(entity);
+                    if (entity) { // Only add valid entities
+                        entity.show = this.isVisible;
+                        this.radarEntities.push(entity);
+                        this.viewer.entities.add(entity);
+                    }
                 }
             }
         });

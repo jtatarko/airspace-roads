@@ -358,6 +358,18 @@ export class SidebarUIControls {
 
             <div class="control-section">
                 <div class="section-header">
+                    <h4>Data Source</h4>
+                </div>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" id="weatherDemoMode" checked>
+                        Demo Mode (Dummy Data)
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-header">
                     <h4>Update Settings</h4>
                 </div>
                 <div class="checkbox-group">
@@ -1075,6 +1087,7 @@ export class SidebarUIControls {
     // Get weather control elements
     const toggleBtn = this.sidebar.querySelector("#weatherRadarToggle");
     const testBtn = this.sidebar.querySelector("#weatherRadarTest");
+    const demoModeCheckbox = this.sidebar.querySelector("#weatherDemoMode");
     const autoUpdateCheckbox = this.sidebar.querySelector("#weatherAutoUpdate");
     const manualUpdateBtn = this.sidebar.querySelector("#weatherManualUpdate");
     const animationToggle = this.sidebar.querySelector("#weatherAnimationToggle");
@@ -1114,7 +1127,7 @@ export class SidebarUIControls {
           }
         }
 
-        this.updateWeatherStatus();
+        // Don't call updateWeatherStatus here to avoid conflicts
       });
     }
 
@@ -1133,6 +1146,20 @@ export class SidebarUIControls {
           testBtn.textContent = "Test Connection";
           testBtn.disabled = false;
         }
+      });
+    }
+
+    // Demo mode toggle
+    if (demoModeCheckbox) {
+      demoModeCheckbox.addEventListener("change", (e) => {
+        this.weatherRadarManager.setDemoMode(e.target.checked);
+
+        // Update test button text based on mode
+        if (testBtn) {
+          testBtn.textContent = e.target.checked ? "Generate Demo Data" : "Test Connection";
+        }
+
+        this.updateWeatherStatus();
       });
     }
 
@@ -1233,6 +1260,7 @@ export class SidebarUIControls {
     const lastUpdateElement = this.sidebar.querySelector("#weatherLastUpdate");
     const dataPointsElement = this.sidebar.querySelector("#weatherDataPoints");
     const cacheSizeElement = this.sidebar.querySelector("#weatherCacheSize");
+    const toggleBtn = this.sidebar.querySelector("#weatherRadarToggle");
 
     if (statusElement) {
       let statusText = "Inactive";
@@ -1258,6 +1286,19 @@ export class SidebarUIControls {
     const autoUpdateCheckbox = this.sidebar.querySelector("#weatherAutoUpdate");
     if (autoUpdateCheckbox) {
       autoUpdateCheckbox.checked = status.autoUpdate;
+    }
+
+    // Update toggle button state to match actual status
+    if (toggleBtn) {
+      if (status.isActive) {
+        toggleBtn.textContent = "Deactivate Radar";
+        toggleBtn.className = "btn danger";
+        toggleBtn.disabled = false;
+      } else {
+        toggleBtn.textContent = "Activate Radar";
+        toggleBtn.className = "btn primary";
+        toggleBtn.disabled = false;
+      }
     }
 
     // Update animation button text

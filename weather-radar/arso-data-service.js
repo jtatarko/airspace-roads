@@ -1,8 +1,12 @@
+import { DummyWeatherGenerator } from './dummy-weather-generator.js';
+
 export class ARSODataService {
     constructor() {
         this.baseUrl = 'https://api.kiberpipe.org/vreme/report/';
         this.updateInterval = 10 * 60 * 1000; // 10 minutes in milliseconds
         this.sloveniaGrid = this.generateSloveniaGrid();
+        this.demoMode = true; // Start in demo mode
+        this.dummyGenerator = new DummyWeatherGenerator();
     }
 
     generateSloveniaGrid() {
@@ -138,10 +142,20 @@ export class ARSODataService {
         return 6000;                       // 6km
     }
 
+    setDemoMode(enabled) {
+        this.demoMode = enabled;
+        console.log(`Weather data demo mode: ${enabled ? 'ON' : 'OFF'}`);
+    }
+
     async getCurrentRadarData() {
         try {
-            const rawData = await this.fetchRadarDataGrid();
-            return this.convertToGeoJSON(rawData);
+            if (this.demoMode) {
+                console.log('Generating dummy weather data...');
+                return this.dummyGenerator.generateCurrentData();
+            } else {
+                const rawData = await this.fetchRadarDataGrid();
+                return this.convertToGeoJSON(rawData);
+            }
         } catch (error) {
             console.error('Error fetching radar data:', error);
             throw error;
@@ -151,14 +165,44 @@ export class ARSODataService {
     // Method for testing with a single point
     async getTestData(lat = 46.0569, lon = 14.5058) { // Ljubljana coordinates
         try {
-            const data = await this.fetchWeatherData(lat, lon);
-            if (data) {
-                return this.convertToGeoJSON([data]);
+            if (this.demoMode) {
+                console.log('Generating demo test data...');
+                // Generate a small area around the test point
+                return this.dummyGenerator.generateCurrentData();
+            } else {
+                const data = await this.fetchWeatherData(lat, lon);
+                if (data) {
+                    return this.convertToGeoJSON([data]);
+                }
+                return null;
             }
-            return null;
         } catch (error) {
             console.error('Error fetching test data:', error);
             throw error;
         }
+    }
+
+    // Method to advance time in demo mode (for animation)
+    advanceDemoTime(minutes = 10) {
+        if (this.demoMode) {
+            return this.dummyGenerator.advanceTime(minutes);
+        }
+        return null;
+    }
+
+    // Method to get demo historical data
+    getDemoHistoricalSequence(durationMinutes = 120, intervalMinutes = 10) {
+        if (this.demoMode) {
+            return this.dummyGenerator.generateHistoricalSequence(durationMinutes, intervalMinutes);
+        }
+        return [];
+    }
+
+    // Get demo system info
+    getDemoSystemInfo() {
+        if (this.demoMode) {
+            return this.dummyGenerator.getSystemInfo();
+        }
+        return null;
     }
 }

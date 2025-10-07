@@ -180,10 +180,17 @@ export class WeatherRadarManager {
         console.log(`Starting radar animation for last ${durationMinutes} minutes`);
 
         try {
-            this.animationFrames = this.cache.createAnimationSequence(durationMinutes);
+            // Check if we're in demo mode and generate demo sequence
+            if (this.dataService.demoMode) {
+                console.log('Generating demo animation sequence...');
+                const demoSequence = this.dataService.getDemoHistoricalSequence(durationMinutes, 10);
+                this.animationFrames = demoSequence;
+            } else {
+                this.animationFrames = this.cache.createAnimationSequence(durationMinutes);
+            }
 
             if (this.animationFrames.length === 0) {
-                console.warn('No cached data available for animation');
+                console.warn('No data available for animation');
                 return;
             }
 
@@ -307,9 +314,13 @@ export class WeatherRadarManager {
     }
 
     // Testing method
+    setDemoMode(enabled) {
+        this.dataService.setDemoMode(enabled);
+    }
+
     async testConnection() {
         try {
-            console.log('Testing ARSO connection...');
+            console.log('Testing weather data connection...');
             const testData = await this.dataService.getTestData();
             return {
                 success: !!testData,
