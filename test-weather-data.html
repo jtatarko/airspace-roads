@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weather Data Manager Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #e0e0e0;
+    }
+    h1 {
+      color: #4CAF50;
+      border-bottom: 2px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #FF9800;
+      margin-top: 30px;
+    }
+    .test-section {
+      background: #2a2a2a;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      border: 1px solid #444;
+    }
+    .controls {
+      margin: 20px 0;
+    }
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #45a049;
+    }
+    button.secondary {
+      background: #757575;
+    }
+    button.secondary:hover {
+      background: #616161;
+    }
+    .output {
+      background: #1e1e1e;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #333;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .status.success {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #4CAF50;
+      color: #4CAF50;
+    }
+    .status.error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid #f44336;
+      color: #f44336;
+    }
+    .status.info {
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid #2196F3;
+      color: #2196F3;
+    }
+    .wind-level {
+      display: inline-block;
+      margin: 5px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .arrow-preview {
+      display: inline-block;
+      margin: 10px;
+      text-align: center;
+    }
+    .arrow-preview canvas {
+      display: block;
+      margin: 10px auto;
+      background: #333;
+      border: 1px solid #666;
+      border-radius: 4px;
+    }
+    select {
+      background: #333;
+      color: white;
+      border: 1px solid #666;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌬️ Weather Data Manager Test</h1>
+
+  <div class="test-section">
+    <h2>📦 Data Source Selection</h2>
+    <div class="controls">
+      <label for="fixtureSelect">Select Fixture:</label>
+      <select id="fixtureSelect">
+        <option value="slovenia-wind-sample-1.json">Calm Winds - Spring</option>
+        <option value="slovenia-wind-sample-2.json">Moderate Winds - Summer</option>
+        <option value="slovenia-wind-storm.json">Storm Conditions - Winter</option>
+      </select>
+      <button onclick="loadFixture()">Load Fixture</button>
+      <button onclick="loadLiveAPI()" class="secondary">Load Live API</button>
+      <button onclick="clearCache()" class="secondary">Clear Cache</button>
+    </div>
+    <div id="dataSourceStatus" class="status info">
+      No data loaded yet
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🌬️ Wind Data Summary</h2>
+    <div id="windSummary" class="output">
+      Load data to see summary...
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>🎨 Arrow Texture Preview</h2>
+    <div id="arrowPreview">
+      <p>Arrow textures will appear here...</p>
+    </div>
+  </div>
+
+  <div class="test-section">
+    <h2>📊 Full Data Output</h2>
+    <div id="fullDataOutput" class="output">
+      Load data to see full JSON...
+    </div>
+  </div>
+
+  <script type="module">
+    import { WeatherDataManager } from './weather-data-manager.js';
+    import {
+      preloadAllArrowTextures,
+      LEVEL_COLORS,
+      LEVEL_NAMES,
+      getCardinalDirection
+    } from './wind-arrow-textures.js';
+
+    let dataManager;
+    let currentData = null;
+
+    // Initialize
+    async function init() {
+      dataManager = new WeatherDataManager();
+      console.log('[Test] WeatherDataManager initialized');
+
+      // Preload arrow textures
+      const textures = preloadAllArrowTextures();
+      displayArrowTextures(textures);
+
+      updateStatus('Ready to load data', 'info');
+    }
+
+    // Load fixture
+    window.loadFixture = async function() {
+      const select = document.getElementById('fixtureSelect');
+      const fixtureName = select.value;
+
+      updateStatus(`Loading fixture: ${fixtureName}...`, 'info');
+
+      try {
+        currentData = await dataManager.getWindData({ useFixture: fixtureName });
+        updateStatus(`✓ Loaded fixture: ${currentData.fixture_metadata?.name || fixtureName}`, 'success');
+        displayData(currentData);
+      } catch (error) {
+        updateStatus(`✗ Error loading fixture: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    // Load from live API
+    window.loadLiveAPI = async function() {
+      updateStatus('Fetching from Open-Meteo API...', 'info');
+
+      try {
+        currentData = await dataManager.getWindData({ forceRefresh: true });
+        updateStatus('✓ Loaded live API data', 'success');
+        displayData(currentData);
+      } catch (error) {
+        updateStatus(`✗ API error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    // Clear cache
+    window.clearCache = function() {
+      dataManager.clearCache();
+      updateStatus('✓ Cache cleared', 'success');
+    };
+
+    // Update status display
+    function updateStatus(message, type) {
+      const statusDiv = document.getElementById('dataSourceStatus');
+      statusDiv.textContent = message;
+      statusDiv.className = `status ${type}`;
+
+      // Add data source info if available
+      const info = dataManager.getDataSourceInfo();
+      if (info.source) {
+        statusDiv.textContent += `\n\nSource: ${info.source}`;
+        if (info.fixture) statusDiv.textContent += `\nFixture: ${info.fixture}`;
+        if (info.lastApiCall) {
+          const age = Math.round((Date.now() - info.lastApiCall) / 1000);
+          statusDiv.textContent += `\nLast API call: ${age}s ago`;
+        }
+        statusDiv.textContent += `\nCache valid: ${info.cacheValid ? 'Yes' : 'No'}`;
+      }
+    }
+
+    // Display data
+    function displayData(data) {
+      displayWindSummary(data);
+      displayFullData(data);
+    }
+
+    // Display wind summary
+    function displayWindSummary(data) {
+      const summaryDiv = document.getElementById('windSummary');
+      let html = '';
+
+      // Metadata
+      if (data.fixture_metadata) {
+        html += `<strong>Scenario:</strong> ${data.fixture_metadata.name}\n`;
+        html += `<strong>Description:</strong> ${data.fixture_metadata.description}\n\n`;
+      }
+
+      html += `<strong>Location:</strong> ${data.location.latitude.toFixed(2)}°N, ${data.location.longitude.toFixed(2)}°E\n`;
+      html += `<strong>Timestamp:</strong> ${data.timestamp}\n\n`;
+
+      html += '<strong>Wind by Altitude:</strong>\n';
+      html += '─'.repeat(80) + '\n';
+
+      Object.entries(data.wind_data).forEach(([levelKey, levelData]) => {
+        const name = LEVEL_NAMES[levelKey] || levelKey;
+        const dir = getCardinalDirection(levelData.winddirection_deg);
+
+        html += `${name.padEnd(30)} `;
+        html += `${levelData.windspeed_kmh.toFixed(1).padStart(6)} km/h `;
+        html += `${levelData.winddirection_deg.toFixed(0).padStart(3)}° (${dir.padStart(3)}) `;
+        html += `${levelData.temperature_c.toFixed(1).padStart(6)}°C\n`;
+      });
+
+      summaryDiv.textContent = html;
+    }
+
+    // Display full data
+    function displayFullData(data) {
+      const outputDiv = document.getElementById('fullDataOutput');
+      outputDiv.textContent = JSON.stringify(data, null, 2);
+    }
+
+    // Display arrow textures
+    function displayArrowTextures(textures) {
+      const previewDiv = document.getElementById('arrowPreview');
+      previewDiv.innerHTML = '';
+
+      Object.entries(textures).forEach(([levelKey, canvas]) => {
+        const div = document.createElement('div');
+        div.className = 'arrow-preview';
+
+        const clonedCanvas = document.createElement('canvas');
+        clonedCanvas.width = canvas.width;
+        clonedCanvas.height = canvas.height;
+        const ctx = clonedCanvas.getContext('2d');
+        ctx.drawImage(canvas, 0, 0);
+
+        div.appendChild(clonedCanvas);
+
+        const label = document.createElement('div');
+        label.textContent = LEVEL_NAMES[levelKey] || levelKey;
+        label.style.color = LEVEL_COLORS[levelKey].toCssColorString();
+        label.style.fontWeight = 'bold';
+        div.appendChild(label);
+
+        previewDiv.appendChild(div);
+      });
+    }
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>

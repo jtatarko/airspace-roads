@@ -1,0 +1,89 @@
+{
+  "fixture_metadata": {
+    "name": "Moderate Winds - Summer",
+    "description": "Summer conditions with moderate winds increasing with altitude. Good for cross-country flight planning practice.",
+    "created": "2025-10-08T15:00:00Z",
+    "scenario": "moderate",
+    "season": "summer",
+    "weather_condition": "partly_cloudy",
+    "max_wind_speed_kmh": 65
+  },
+  "api_source": {
+    "provider": "Open-Meteo",
+    "endpoint": "https://api.open-meteo.com/v1/forecast",
+    "original_request": {
+      "latitude": 46.05,
+      "longitude": 14.5,
+      "timestamp": "2025-10-08T15:00:00Z"
+    }
+  },
+  "location": {
+    "latitude": 46.05,
+    "longitude": 14.5,
+    "elevation": 302,
+    "timezone": "Europe/Ljubljana",
+    "region": "Slovenia"
+  },
+  "timestamp": "2025-10-08T15:00:00Z",
+  "wind_data": {
+    "surface_1000hPa": {
+      "altitude_m": 110,
+      "temperature_c": 24.5,
+      "windspeed_kmh": 15.2,
+      "winddirection_deg": 240,
+      "relativehumidity_pct": 52,
+      "cloudcover_pct": 45,
+      "geopotential_height_m": 110
+    },
+    "pattern_925hPa": {
+      "altitude_m": 762,
+      "temperature_c": 21.3,
+      "windspeed_kmh": 22.8,
+      "winddirection_deg": 235,
+      "relativehumidity_pct": 48,
+      "cloudcover_pct": 50,
+      "geopotential_height_m": 762
+    },
+    "low_cruise_850hPa": {
+      "altitude_m": 1524,
+      "temperature_c": 14.2,
+      "windspeed_kmh": 32.5,
+      "winddirection_deg": 230,
+      "relativehumidity_pct": 42,
+      "cloudcover_pct": 55,
+      "geopotential_height_m": 1524
+    },
+    "med_cruise_700hPa": {
+      "altitude_m": 3048,
+      "temperature_c": 2.8,
+      "windspeed_kmh": 48.7,
+      "winddirection_deg": 225,
+      "relativehumidity_pct": 38,
+      "cloudcover_pct": 45,
+      "geopotential_height_m": 3048
+    },
+    "high_cruise_500hPa": {
+      "altitude_m": 5640,
+      "temperature_c": -14.2,
+      "windspeed_kmh": 68.3,
+      "winddirection_deg": 220,
+      "relativehumidity_pct": 25,
+      "cloudcover_pct": 30,
+      "geopotential_height_m": 5640
+    },
+    "fl250_300hPa": {
+      "altitude_m": 9240,
+      "temperature_c": -38.5,
+      "windspeed_kmh": 115.6,
+      "winddirection_deg": 215,
+      "relativehumidity_pct": 12,
+      "cloudcover_pct": 15,
+      "geopotential_height_m": 9240
+    }
+  },
+  "precipitation": {
+    "total_mm": 0.0,
+    "rain_mm": 0.0,
+    "snow_cm": 0.0
+  }
+}

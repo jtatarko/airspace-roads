@@ -1,0 +1,34 @@
+{
+  "fixtures": [
+    {
+      "filename": "slovenia-wind-sample-1.json",
+      "name": "Calm Winds - Spring",
+      "description": "Light westerly winds, typical spring day. Perfect for VFR operations.",
+      "scenario": "calm",
+      "season": "spring",
+      "max_wind_speed_kmh": 25,
+      "tags": ["testing", "baseline", "calm", "vfr"]
+    },
+    {
+      "filename": "slovenia-wind-sample-2.json",
+      "name": "Moderate Winds - Summer",
+      "description": "Moderate winds across all levels, summer conditions. Good for cross-country planning.",
+      "scenario": "moderate",
+      "season": "summer",
+      "max_wind_speed_kmh": 65,
+      "tags": ["testing", "moderate", "cross-country"]
+    },
+    {
+      "filename": "slovenia-wind-storm.json",
+      "name": "Storm Conditions - Winter",
+      "description": "Severe winds with jet stream, winter storm. Challenging conditions.",
+      "scenario": "storm",
+      "season": "winter",
+      "max_wind_speed_kmh": 185,
+      "tags": ["testing", "extreme", "storm", "jet-stream", "winter"]
+    }
+  ],
+  "last_updated": "2025-10-08T14:00:00Z",
+  "default_fixture": "slovenia-wind-sample-1.json",
+  "version": "1.0.0"
+}

@@ -76,3 +76,7 @@ jspm_packages/
 # Temporary files
 *.tmp
 *.temp
+
+# Weather data cache (runtime only, not committed)
+data/weather/cache/
+data/weather/*.tmp

@@ -1,0 +1,89 @@
+{
+  "fixture_metadata": {
+    "name": "Storm Conditions - Winter",
+    "description": "Severe winter storm with strong winds at all levels and jet stream influence. Challenging conditions for all aircraft operations.",
+    "created": "2025-10-08T16:00:00Z",
+    "scenario": "storm",
+    "season": "winter",
+    "weather_condition": "stormy",
+    "max_wind_speed_kmh": 185
+  },
+  "api_source": {
+    "provider": "Open-Meteo",
+    "endpoint": "https://api.open-meteo.com/v1/forecast",
+    "original_request": {
+      "latitude": 46.05,
+      "longitude": 14.5,
+      "timestamp": "2025-10-08T16:00:00Z"
+    }
+  },
+  "location": {
+    "latitude": 46.05,
+    "longitude": 14.5,
+    "elevation": 302,
+    "timezone": "Europe/Ljubljana",
+    "region": "Slovenia"
+  },
+  "timestamp": "2025-10-08T16:00:00Z",
+  "wind_data": {
+    "surface_1000hPa": {
+      "altitude_m": 110,
+      "temperature_c": 2.5,
+      "windspeed_kmh": 45.0,
+      "winddirection_deg": 230,
+      "relativehumidity_pct": 85,
+      "cloudcover_pct": 95,
+      "geopotential_height_m": 110
+    },
+    "pattern_925hPa": {
+      "altitude_m": 762,
+      "temperature_c": 0.8,
+      "windspeed_kmh": 55.0,
+      "winddirection_deg": 235,
+      "relativehumidity_pct": 88,
+      "cloudcover_pct": 98,
+      "geopotential_height_m": 762
+    },
+    "low_cruise_850hPa": {
+      "altitude_m": 1524,
+      "temperature_c": -3.2,
+      "windspeed_kmh": 68.0,
+      "winddirection_deg": 240,
+      "relativehumidity_pct": 82,
+      "cloudcover_pct": 100,
+      "geopotential_height_m": 1524
+    },
+    "med_cruise_700hPa": {
+      "altitude_m": 3048,
+      "temperature_c": -12.5,
+      "windspeed_kmh": 85.0,
+      "winddirection_deg": 245,
+      "relativehumidity_pct": 75,
+      "cloudcover_pct": 95,
+      "geopotential_height_m": 3048
+    },
+    "high_cruise_500hPa": {
+      "altitude_m": 5640,
+      "temperature_c": -28.7,
+      "windspeed_kmh": 125.0,
+      "winddirection_deg": 250,
+      "relativehumidity_pct": 55,
+      "cloudcover_pct": 80,
+      "geopotential_height_m": 5640
+    },
+    "fl250_300hPa": {
+      "altitude_m": 9240,
+      "temperature_c": -51.3,
+      "windspeed_kmh": 185.0,
+      "winddirection_deg": 255,
+      "relativehumidity_pct": 25,
+      "cloudcover_pct": 40,
+      "geopotential_height_m": 9240
+    }
+  },
+  "precipitation": {
+    "total_mm": 8.5,
+    "rain_mm": 5.2,
+    "snow_cm": 3.5
+  }
+}
