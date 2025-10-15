@@ -715,4 +715,80 @@ export class WeatherDataManager {
 
     return result;
   }
+
+  /**
+   * Convert wind data to U/V velocity components for particle visualization
+   * @param {Object} gridData - Normalized grid data
+   * @param {string} levelKey - Altitude level key
+   * @returns {Object} Wind data in cesium-wind-layer format
+   */
+  convertToUVComponents(gridData, levelKey) {
+    const grid = gridData.grid;
+    const levelData = grid.wind_data[levelKey];
+
+    if (!levelData) {
+      throw new Error(`Level ${levelKey} not found in grid data`);
+    }
+
+    const numLats = grid.latitudes.length;
+    const numLons = grid.longitudes.length;
+
+    // Initialize U/V arrays
+    const uData = new Float32Array(numLats * numLons);
+    const vData = new Float32Array(numLats * numLons);
+
+    let minU = Infinity, maxU = -Infinity;
+    let minV = Infinity, maxV = -Infinity;
+
+    // Convert speed+direction to U/V components
+    // U = eastward component, V = northward component
+    // In meteorological convention:
+    //   - direction 0° = wind from north, so U=0, V=-speed
+    //   - direction 90° = wind from east, so U=-speed, V=0
+    let index = 0;
+    for (let latIdx = 0; latIdx < numLats; latIdx++) {
+      for (let lonIdx = 0; lonIdx < numLons; lonIdx++) {
+        const windSpeed = levelData.windspeed[latIdx][lonIdx] / 3.6; // Convert km/h to m/s
+        const windDirection = levelData.winddirection[latIdx][lonIdx];
+
+        // Convert meteorological direction (from) to mathematical direction (to)
+        const directionRadians = (270 - windDirection) * Math.PI / 180;
+
+        // Calculate U and V components
+        const u = windSpeed * Math.cos(directionRadians);
+        const v = windSpeed * Math.sin(directionRadians);
+
+        uData[index] = u;
+        vData[index] = v;
+
+        minU = Math.min(minU, u);
+        maxU = Math.max(maxU, u);
+        minV = Math.min(minV, v);
+        maxV = Math.max(maxV, v);
+
+        index++;
+      }
+    }
+
+    return {
+      u: {
+        array: uData,
+        min: minU,
+        max: maxU
+      },
+      v: {
+        array: vData,
+        min: minV,
+        max: maxV
+      },
+      width: numLons,
+      height: numLats,
+      bounds: {
+        west: grid.longitudes[0],
+        south: grid.latitudes[0],
+        east: grid.longitudes[numLons - 1],
+        north: grid.latitudes[numLats - 1]
+      }
+    };
+  }
 }

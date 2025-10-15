@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wind Arrows Test - Cesium Map</title>
+  <link rel="stylesheet" href="node_modules/cesium/Build/Cesium/Widgets/widgets.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #cesiumContainer {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+    }
+
+    .controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(42, 42, 42, 0.95);
+      padding: 15px;
+      border-radius: 8px;
+      color: #e0e0e0;
+      z-index: 1000;
+      max-width: 300px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .controls h3 {
+      margin: 0 0 10px 0;
+      color: #4CAF50;
+      font-size: 14px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 5px;
+    }
+
+    .controls button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      margin: 5px 5px 5px 0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .controls button:hover {
+      background: #45a049;
+    }
+
+    .controls button.secondary {
+      background: #757575;
+    }
+
+    .controls button.secondary:hover {
+      background: #616161;
+    }
+
+    .layer-toggle {
+      margin: 8px 0;
+      font-size: 12px;
+    }
+
+    .layer-toggle label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .layer-toggle input {
+      margin-right: 8px;
+    }
+
+    .color-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      margin-right: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .status {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: rgba(33, 150, 243, 0.2);
+      border: 1px solid #2196F3;
+      color: #2196F3;
+    }
+
+    .status.success {
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #4CAF50;
+      color: #4CAF50;
+    }
+
+    .status.error {
+      background: rgba(244, 67, 54, 0.2);
+      border: 1px solid #f44336;
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+
+  <div class="controls">
+    <h3>🌬️ Wind Arrows</h3>
+
+    <div>
+      <button onclick="loadWindArrows()">Load Wind Arrows</button>
+      <button onclick="clearWindArrows()" class="secondary">Clear</button>
+    </div>
+
+    <div style="margin-top: 15px;">
+      <strong style="font-size: 11px;">Altitude Levels:</strong>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-surface" checked onchange="toggleLayer('surface_1000hPa', this.checked)">
+          <span class="color-indicator" style="background: white;"></span>
+          Surface (100m)
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-pattern" checked onchange="toggleLayer('pattern_925hPa', this.checked)">
+          <span class="color-indicator" style="background: orange;"></span>
+          Pattern (750m)
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-low" checked onchange="toggleLayer('low_cruise_850hPa', this.checked)">
+          <span class="color-indicator" style="background: yellow;"></span>
+          Low Cruise (1,500m)
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-med" checked onchange="toggleLayer('med_cruise_700hPa', this.checked)">
+          <span class="color-indicator" style="background: lime;"></span>
+          Med Cruise (3,000m)
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-high" checked onchange="toggleLayer('high_cruise_500hPa', this.checked)">
+          <span class="color-indicator" style="background: cyan;"></span>
+          High Cruise (5,600m)
+        </label>
+      </div>
+      <div class="layer-toggle">
+        <label>
+          <input type="checkbox" id="layer-fl250" onchange="toggleLayer('fl250_300hPa', this.checked)">
+          <span class="color-indicator" style="background: purple;"></span>
+          FL250 (9,200m)
+        </label>
+      </div>
+    </div>
+
+    <div id="status" class="status">
+      Ready to load wind data
+    </div>
+  </div>
+
+  <script type="module">
+    import * as Cesium from 'cesium';
+    import { WeatherDataManager } from './weather-data-manager.js';
+    import { WindArrowManager } from './wind-arrow-manager.js';
+
+    // Cesium access token (from .env.local)
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiYTg3NDYzNi1iNmE0LTRiOWItYTgwOC0zNTQyZDNhZDg4ZDYiLCJpZCI6Mjg1Njk5LCJpYXQiOjE3NDIzNzYwMjJ9.UhgtktfB6R16hRM4GBCNi6hj5XmxNkGfeLCrLiPBc4o';
+
+    // Initialize Cesium Viewer
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+      terrainProvider: await Cesium.CesiumTerrainProvider.fromIonAssetId(1),
+      timeline: false,
+      animation: false,
+      baseLayerPicker: true,
+      geocoder: false,
+      homeButton: true,
+      sceneModePicker: false,
+      navigationHelpButton: false,
+      infoBox: true,
+      selectionIndicator: true
+    });
+
+    // Initialize managers
+    const weatherDataManager = new WeatherDataManager({ useGridAPI: true });
+    const windArrowManager = new WindArrowManager(viewer, weatherDataManager);
+
+    // Fly to Slovenia
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(14.5, 46.05, 150000),
+      orientation: {
+        heading: Cesium.Math.toRadians(0),
+        pitch: Cesium.Math.toRadians(-45),
+        roll: 0.0
+      },
+      duration: 2
+    });
+
+    // Global functions
+    window.loadWindArrows = async function() {
+      updateStatus('Loading wind data from Grid API...', 'status');
+
+      try {
+        await windArrowManager.updateWindArrows({ forceRefresh: true });
+        updateStatus('✓ Wind arrows loaded successfully!', 'success');
+      } catch (error) {
+        updateStatus(`✗ Error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    window.clearWindArrows = function() {
+      windArrowManager.clear();
+      updateStatus('Wind arrows cleared', 'status');
+    };
+
+    window.toggleLayer = function(levelKey, visible) {
+      windArrowManager.setLayerVisibility(levelKey, visible);
+      updateStatus(`${levelKey}: ${visible ? 'visible' : 'hidden'}`, 'status');
+    };
+
+    function updateStatus(message, type) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = message;
+      statusDiv.className = 'status ' + type;
+    }
+
+    console.log('[Test] Wind Arrows Test initialized');
+    console.log('[Test] Click "Load Wind Arrows" to display wind data');
+  </script>
+</body>
+</html>
