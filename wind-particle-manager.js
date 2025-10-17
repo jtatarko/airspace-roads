@@ -1,3 +1,4 @@
+import * as Cesium from "cesium";
 import { WindLayer } from "cesium-wind-layer";
 
 /**
@@ -55,7 +56,212 @@ export class WindParticleManager {
     // Current grid data
     this.currentGridData = null;
 
+    // Click handler for wind info display
+    this.clickHandler = null;
+
+    // Track wind info entities for cleanup
+    this.windInfoEntities = [];
+
+    this.enableClickHandler();
+
     console.log("[WindParticleManager] Initialized");
+  }
+
+  /**
+   * Enable click handler to show wind data at clicked location
+   */
+  enableClickHandler() {
+    this.clickHandler = new Cesium.ScreenSpaceEventHandler(
+      this.viewer.scene.canvas
+    );
+
+    this.clickHandler.setInputAction((click) => {
+      if (!this.currentGridData) return;
+
+      // Get clicked position
+      const cartesian = this.viewer.camera.pickEllipsoid(
+        click.position,
+        this.viewer.scene.globe.ellipsoid
+      );
+      if (!cartesian) return;
+
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+      const latitude = Cesium.Math.toDegrees(cartographic.latitude);
+      const longitude = Cesium.Math.toDegrees(cartographic.longitude);
+
+      // Get wind data for all altitude levels
+      this.showWindInfoAtLocation(latitude, longitude);
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // Listen for when InfoBox is closed to clean up entities
+    this.viewer.selectedEntityChanged.addEventListener(
+      this.onSelectedEntityChanged.bind(this)
+    );
+
+    console.log("[WindParticleManager] Click handler enabled");
+  }
+
+  /**
+   * Handle selected entity changes to clean up wind info entities
+   */
+  onSelectedEntityChanged() {
+    // Clean up old wind info entities when user closes InfoBox or selects something else
+    this.windInfoEntities.forEach((entity) => {
+      if (this.viewer.selectedEntity !== entity) {
+        this.viewer.entities.remove(entity);
+      }
+    });
+
+    // Clear the array, keeping only the currently selected entity if it's a wind info entity
+    this.windInfoEntities = this.windInfoEntities.filter(
+      (entity) => this.viewer.selectedEntity === entity
+    );
+  }
+
+  /**
+   * Disable click handler
+   */
+  disableClickHandler() {
+    if (this.clickHandler) {
+      this.clickHandler.destroy();
+      this.clickHandler = null;
+      console.log("[WindParticleManager] Click handler disabled");
+    }
+  }
+
+  /**
+   * Show wind information at a specific location
+   * @param {number} latitude - Latitude in degrees
+   * @param {number} longitude - Longitude in degrees
+   */
+  showWindInfoAtLocation(latitude, longitude) {
+    if (!this.currentGridData) {
+      console.warn("[WindParticleManager] No wind data available");
+      return;
+    }
+
+    // Build HTML content with wind data for all levels
+    let htmlContent = `
+      <div style="font-family: monospace; font-size: 12px;">
+        <h3 style="margin: 0 0 10px 0; font-size: 14px;">💨 Wind Data</h3>
+        <div style="color: #888; font-size: 11px; margin-bottom: 10px;">
+          ${latitude.toFixed(4)}°N, ${longitude.toFixed(4)}°E
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="border-bottom: 1px solid #ccc;">
+              <th style="text-align: left; padding: 4px;">Altitude</th>
+              <th style="text-align: right; padding: 4px;">Speed</th>
+              <th style="text-align: right; padding: 4px;">Direction</th>
+              <th style="text-align: right; padding: 4px;">Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    // Get wind data for each altitude level (only visible ones)
+    let visibleLevelCount = 0;
+    for (const [levelKey, config] of Object.entries(this.layerConfig)) {
+      // Skip disabled layers
+      if (!config.enabled) continue;
+
+      try {
+        const windData = this.weatherDataManager.getWindAtLocation(
+          this.currentGridData,
+          latitude,
+          longitude,
+          levelKey
+        );
+
+        const speedKmh = windData.windspeed_kmh.toFixed(1);
+        const speedKnots = (windData.windspeed_kmh * 0.539957).toFixed(1);
+        const direction = Math.round(windData.winddirection_deg);
+        const cardinal = this.getCardinalDirection(direction);
+        const temp = windData.temperature_c.toFixed(1);
+
+        // Color indicator matching particle color
+        const colorRgb = `rgb(${Math.round(config.color.r * 255)}, ${Math.round(config.color.g * 255)}, ${Math.round(config.color.b * 255)})`;
+
+        htmlContent += `
+          <tr style="border-bottom: 1px solid #eee;">
+            <td style="padding: 4px;">
+              <span style="display: inline-block; width: 10px; height: 10px; background: ${colorRgb}; border: 1px solid #666; margin-right: 6px; vertical-align: middle;"></span>
+              ${config.name}
+            </td>
+            <td style="text-align: right; padding: 4px;">${speedKmh} km/h<br/><span style="color: #888;">(${speedKnots} kt)</span></td>
+            <td style="text-align: right; padding: 4px;">${direction}° ${cardinal}</td>
+            <td style="text-align: right; padding: 4px;">${temp}°C</td>
+          </tr>
+        `;
+        visibleLevelCount++;
+      } catch (error) {
+        console.error(
+          "[WindParticleManager] Error getting wind at location:",
+          error
+        );
+      }
+    }
+
+    // If no layers are visible, show a message
+    if (visibleLevelCount === 0) {
+      htmlContent += `
+        <tr>
+          <td colspan="4" style="padding: 15px; text-align: center; color: #888;">
+            No wind layers visible.<br/>
+            <span style="font-size: 11px;">Enable layers to see wind data.</span>
+          </td>
+        </tr>
+      `;
+    }
+
+    htmlContent += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Create an invisible entity at the clicked location to attach the info box
+    const entity = this.viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(longitude, latitude, 0),
+      name: "Wind Info",
+      description: htmlContent,
+    });
+
+    // Track this entity for cleanup later
+    this.windInfoEntities.push(entity);
+
+    // Select the entity to show the info box
+    this.viewer.selectedEntity = entity;
+
+    // Entity will be removed automatically when InfoBox is closed via onSelectedEntityChanged
+  }
+
+  /**
+   * Convert wind direction to cardinal direction
+   * @param {number} degrees - Wind direction in degrees
+   * @returns {string} Cardinal direction (N, NE, E, etc.)
+   */
+  getCardinalDirection(degrees) {
+    const directions = [
+      "N",
+      "NNE",
+      "NE",
+      "ENE",
+      "E",
+      "ESE",
+      "SE",
+      "SSE",
+      "S",
+      "SSW",
+      "SW",
+      "WSW",
+      "W",
+      "WNW",
+      "NW",
+      "NNW",
+    ];
+    const index = Math.round((degrees % 360) / 22.5) % 16;
+    return directions[index];
   }
 
   /**
@@ -151,7 +357,7 @@ export class WindParticleManager {
       },
 
       // Animation
-      speedFactor: 0.2, // Speed multiplier (0.01 = realistic visual speed)
+      speedFactor: 0.1, // Speed multiplier (0.01 = realistic visual speed)
       dropRate: 0.0001, // Rate at which particles reset
       dropRateBump: 0, // Random variation in drop rate
 
@@ -273,6 +479,7 @@ export class WindParticleManager {
    */
   destroy() {
     this.clearAllLayers();
+    this.disableClickHandler();
     this.currentGridData = null;
     console.log("[WindParticleManager] Destroyed");
   }
