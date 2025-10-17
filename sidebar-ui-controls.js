@@ -5,9 +5,10 @@ import { AirspaceClassifier } from "./airspace-classifier.js";
 import { AircraftConfig } from "./aircraft-types.js";
 
 export class SidebarUIControls {
-  constructor(airspaceVisualizer, aircraftTracker) {
+  constructor(airspaceVisualizer, aircraftTracker, windParticleManager = null) {
     this.airspaceVisualizer = airspaceVisualizer;
     this.aircraftTracker = aircraftTracker;
+    this.windParticleManager = windParticleManager;
 
     // UI state
     this.isCollapsed = false;
@@ -17,6 +18,7 @@ export class SidebarUIControls {
     // Control instances
     this.airspaceControls = null;
     this.aircraftControls = null;
+    this.weatherControls = null;
 
     // DOM elements
     this.sidebar = null;
@@ -55,6 +57,9 @@ export class SidebarUIControls {
                     <button class="tab-button" data-tab="aircraft">
                         <span class="tab-label">Aircrafts</span>
                     </button>
+                    <button class="tab-button" data-tab="weather">
+                        <span class="tab-label">Weather</span>
+                    </button>
                 </div>
                 <button class="sidebar-toggle" title="Toggle Sidebar">
                     <span class="toggle-icon">x</span>
@@ -66,6 +71,9 @@ export class SidebarUIControls {
                 </div>
                 <div class="tab-content" data-tab="aircraft">
                     <!-- Aircraft controls will be populated here -->
+                </div>
+                <div class="tab-content" data-tab="weather">
+                    <!-- Weather controls will be populated here -->
                 </div>
             </div>
         `;
@@ -153,6 +161,7 @@ export class SidebarUIControls {
   initializeTabContent() {
     this.createAirspaceTabContent();
     this.createAircraftTabContent();
+    this.createWeatherTabContent();
 
     // Setup event listeners for the tab content elements
     this.setupTabEventListeners();
@@ -185,9 +194,14 @@ export class SidebarUIControls {
                     <h4>Display Options</h4>
                 </div>
                 <label class="checkbox-control">
+                    <input type="checkbox" id="sidebarShowPolygons" checked>
+                    <span class="checkmark"></span>
+                    <span class="label-text">Show Airspace Polygons</span>
+                </label>
+                <label class="checkbox-control">
                     <input type="checkbox" id="sidebarShowLabels" checked>
                     <span class="checkmark"></span>
-                    <span class="label-text">Show Labels</span>
+                    <span class="label-text">Show Airspace Labels</span>
                 </label>
             </div>
 
@@ -375,6 +389,17 @@ export class SidebarUIControls {
             e.target.checked
           );
           this.airspaceVisualizer.setShowLabels(e.target.checked);
+        }
+      });
+    }
+
+    // Polygon visibility toggle
+    const polygonToggle = this.sidebar.querySelector("#sidebarShowPolygons");
+    if (polygonToggle) {
+      polygonToggle.addEventListener("change", (e) => {
+        console.log("Polygon toggle changed:", e.target.checked);
+        if (this.airspaceVisualizer) {
+          this.airspaceVisualizer.setShowPolygons(e.target.checked);
         }
       });
     }
@@ -970,6 +995,182 @@ export class SidebarUIControls {
     originalControls.forEach((control) => {
       control.style.display = "block";
     });
+  }
+
+  createWeatherTabContent() {
+    if (!this.windParticleManager) {
+      console.warn('[SidebarUI] WindParticleManager not provided, weather tab will be limited');
+    }
+
+    const weatherTab = this.contentContainer.querySelector('[data-tab="weather"]');
+    weatherTab.innerHTML = `
+      <div class="control-section">
+        <div class="section-header">
+          <h4>💨 Wind Visualization</h4>
+        </div>
+
+        <div class="action-buttons">
+          <button class="btn primary" id="loadWindBtn">
+            Load Wind Data
+          </button>
+          <button class="btn secondary" id="clearWindBtn">
+            Clear
+          </button>
+        </div>
+
+        <div id="windStatus" style="margin-top: 12px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; font-size: 11px; text-align: center;">
+          Ready to load wind data
+        </div>
+      </div>
+
+      <div class="control-section">
+        <div class="section-header">
+          <h4>Altitude Layers</h4>
+        </div>
+
+        <div class="checkbox-control" data-level="surface_1000hPa">
+          <input type="checkbox" id="wind-surface" checked>
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(255, 255, 255); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-surface" class="label-text">Surface (100m)</label>
+        </div>
+
+        <div class="checkbox-control" data-level="pattern_925hPa">
+          <input type="checkbox" id="wind-pattern" checked>
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(255, 165, 0); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-pattern" class="label-text">Pattern (750m)</label>
+        </div>
+
+        <div class="checkbox-control" data-level="low_cruise_850hPa">
+          <input type="checkbox" id="wind-low" checked>
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(255, 255, 0); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-low" class="label-text">Low Cruise (1,500m)</label>
+        </div>
+
+        <div class="checkbox-control" data-level="med_cruise_700hPa">
+          <input type="checkbox" id="wind-med" checked>
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(0, 255, 0); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-med" class="label-text">Med Cruise (3,000m)</label>
+        </div>
+
+        <div class="checkbox-control" data-level="high_cruise_500hPa">
+          <input type="checkbox" id="wind-high" checked>
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(0, 255, 255); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-high" class="label-text">High Cruise (5,600m)</label>
+        </div>
+
+        <div class="checkbox-control" data-level="fl250_300hPa">
+          <input type="checkbox" id="wind-fl250">
+          <span style="display: inline-block; width: 12px; height: 12px; background: rgb(128, 0, 128); border: 1px solid #666; margin-right: 6px;"></span>
+          <label for="wind-fl250" class="label-text">FL250 (9,200m)</label>
+        </div>
+      </div>
+
+      <div class="control-section">
+        <div class="section-header">
+          <h4>Animation Speed</h4>
+        </div>
+
+        <div class="altitude-control">
+          <div class="altitude-display">
+            <span id="windSpeedValue" class="altitude-value">0.01x</span>
+          </div>
+          <input type="range" id="windSpeedSlider"
+                 min="0.005" max="0.05" step="0.005" value="0.01" class="altitude-slider">
+          <div class="range-labels">
+            <span>Slow (0.005x)</span>
+            <span>Fast (0.05x)</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Setup weather tab event listeners
+    this.setupWeatherEventListeners();
+  }
+
+  setupWeatherEventListeners() {
+    if (!this.windParticleManager) return;
+
+    const weatherTab = this.contentContainer.querySelector('[data-tab="weather"]');
+
+    // Load wind button
+    const loadBtn = weatherTab.querySelector('#loadWindBtn');
+    loadBtn.addEventListener('click', () => this.loadWindData());
+
+    // Clear wind button
+    const clearBtn = weatherTab.querySelector('#clearWindBtn');
+    clearBtn.addEventListener('click', () => this.clearWindData());
+
+    // Layer checkboxes
+    const checkboxes = weatherTab.querySelectorAll('.checkbox-control input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const levelKey = e.target.closest('.checkbox-control').dataset.level;
+        this.toggleWindLayer(levelKey, e.target.checked);
+      });
+    });
+
+    // Speed slider
+    const speedSlider = weatherTab.querySelector('#windSpeedSlider');
+    const speedValue = weatherTab.querySelector('#windSpeedValue');
+    speedSlider.addEventListener('input', (e) => {
+      const speed = parseFloat(e.target.value);
+      speedValue.textContent = `${speed.toFixed(3)}x`;
+      // Note: Updating speed dynamically requires recreating layers
+      // For now, speed is set on layer creation
+    });
+  }
+
+  async loadWindData() {
+    if (!this.windParticleManager) return;
+
+    const statusDiv = document.querySelector('#windStatus');
+    statusDiv.textContent = 'Loading wind data...';
+    statusDiv.style.color = '#2196F3';
+
+    try {
+      await this.windParticleManager.updateWindParticles({ forceRefresh: false });
+
+      const visibilityState = this.windParticleManager.getLayerVisibility();
+      const activeCount = Object.values(visibilityState).filter(v => v).length;
+
+      statusDiv.textContent = `✓ Wind loaded (${activeCount} layers active)`;
+      statusDiv.style.color = '#4CAF50';
+    } catch (error) {
+      statusDiv.textContent = `✗ Error: ${error.message}`;
+      statusDiv.style.color = '#f44336';
+      console.error('[SidebarUI] Wind load error:', error);
+    }
+  }
+
+  clearWindData() {
+    if (!this.windParticleManager) return;
+
+    this.windParticleManager.clear();
+
+    const statusDiv = document.querySelector('#windStatus');
+    statusDiv.textContent = 'Wind data cleared';
+    statusDiv.style.color = '#757575';
+  }
+
+  async toggleWindLayer(levelKey, enabled) {
+    if (!this.windParticleManager) return;
+
+    try {
+      await this.windParticleManager.setLayerVisibility(levelKey, enabled);
+
+      // Update status
+      const visibilityState = this.windParticleManager.getLayerVisibility();
+      const activeCount = Object.values(visibilityState).filter(v => v).length;
+
+      const statusDiv = document.querySelector('#windStatus');
+      if (statusDiv && activeCount > 0) {
+        statusDiv.textContent = `✓ Wind loaded (${activeCount} layers active)`;
+        statusDiv.style.color = '#4CAF50';
+      }
+    } catch (error) {
+      console.error('[SidebarUI] Layer toggle error:', error);
+    }
   }
 
   destroy() {
