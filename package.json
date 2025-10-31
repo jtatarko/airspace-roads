@@ -12,7 +12,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "cesium": "^1.132.0"
+    "cesium": "^1.132.0",
+    "cesium-wind-layer": "^0.10.0"
   },
   "devDependencies": {
     "vite": "^7.1.2",

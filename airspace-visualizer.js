@@ -20,6 +20,7 @@ export class AirspaceVisualizer {
     this.airspaces = [];
     this.entities = new Map();
     this.showLabels = true;
+    this.showPolygons = true; // Toggle for airspace polygon visibility
     this.maxAltitudeFilter = 20000; // 20km default
     this.highlightedAirspace = null;
 
@@ -103,6 +104,7 @@ export class AirspaceVisualizer {
         outline: style.outline,
         outlineColor: style.outlineColor,
         outlineWidth: style.outlineWidth,
+        show: this.showPolygons, // Respect polygon visibility toggle
       }),
       label: style.showLabel
         ? new LabelGraphics({
@@ -184,6 +186,19 @@ export class AirspaceVisualizer {
 
     // Re-render all airspaces to ensure labels are created/removed properly
     this.renderAirspaces();
+  }
+
+  setShowPolygons(show) {
+    this.showPolygons = show;
+
+    // Update visibility of all existing polygon entities
+    this.entities.forEach(entity => {
+      if (entity.polygon) {
+        entity.polygon.show = show;
+      }
+    });
+
+    console.log(`[AirspaceVisualizer] Airspace polygons: ${show ? 'visible' : 'hidden'}`);
   }
 
   highlightAirspace(airspaceId, highlight = true) {

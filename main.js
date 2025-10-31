@@ -7,6 +7,8 @@ import { AircraftTracker } from './aircraft-tracker.js';
 import { AircraftUIControls } from './aircraft-ui-controls.js';
 import { AirspaceViolationDetector } from './airspace-violation-detector.js';
 import { SidebarUIControls } from './sidebar-ui-controls.js';
+import { WeatherDataManager } from './weather-data-manager.js';
+import { WindParticleManager } from './wind-particle-manager.js';
 
 // (optional but recommended) set your Cesium ion token
 Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN || "";
@@ -24,6 +26,8 @@ let aircraftTracker;
 let aircraftControls;
 let violationDetector;
 let sidebarControls;
+let weatherDataManager;
+let windParticleManager;
 
 async function initializeVisualizationSystem() {
   try {
@@ -45,8 +49,13 @@ async function initializeVisualizationSystem() {
     airspaceControls = new AirspaceUIControls(airspaceVisualizer);
     aircraftControls = new AircraftUIControls(aircraftTracker);
 
-    // Create new unified sidebar
-    sidebarControls = new SidebarUIControls(airspaceVisualizer, aircraftTracker);
+    // Initialize weather system
+    weatherDataManager = new WeatherDataManager({ useGridAPI: true });
+    windParticleManager = new WindParticleManager(viewer, weatherDataManager);
+    console.log('Weather visualization system initialized');
+
+    // Create new unified sidebar (with weather support)
+    sidebarControls = new SidebarUIControls(airspaceVisualizer, aircraftTracker, windParticleManager);
 
     // Connect legacy controls to sidebar
     sidebarControls.setAirspaceControls(airspaceControls);
